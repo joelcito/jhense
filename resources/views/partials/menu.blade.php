@@ -27,12 +27,12 @@
                 <li class="nav-small-cap"><i class="mdi mdi-dots-horizontal"></i> <span class="hide-menu">ADMINISTRACION</span></li>
                 <li class="sidebar-item">
                     <a class="sidebar-link has-arrow waves-effect waves-dark" href="javascript:void(0)" aria-expanded="false">
-                        <i data-feather="" class="feather-icon"></i><span class="hide-menu"> NOMBRE MENU 1 </span>
+                        <i data-feather="home" class="feather-icon"></i><span class="hide-menu"> Administracion</span>
                     </a>
                     <ul aria-expanded="false" class="collapse  first-level">
                         <li class="sidebar-item">
-                            <a href='#' class="sidebar-link">
-                                <i data-feather="" class="feather-icon"></i><span class="hide-menu"> NOMBRE HIJO </span>
+                            <a href='{{ route('rol.listado') }}' class="sidebar-link">
+                                <i data-feather="home" class="feather-icon"></i><span class="hide-menu"> Rol </span>
                             </a>
                         </li>
                     </ul>
@@ -43,14 +43,4 @@
         <!-- End Sidebar navigation -->
     </div>
     <!-- End Sidebar scroll-->
-    <!-- Bottom points-->
-    <div class="sidebar-footer">
-        <!-- item-->
-        {{-- <a href="" class="link" data-toggle="tooltip" title="Settings"><i class="ti-settings"></i></a> --}}
-        <!-- item-->
-        {{-- <a href="" class="link" data-toggle="tooltip" title="Email"><i class="mdi mdi-gmail"></i></a> --}}
-        <!-- item-->
-        <a href="{{ route('logout') }}" onclick="event.preventDefault(); document.getElementById('logout-form').submit();" class="link" data-toggle="tooltip" title="Cerrar Sesión"><i class="mdi mdi-power"></i></a>
-    </div>
-    <!-- End Bottom points-->
 </aside>
