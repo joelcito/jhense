@@ -35,6 +35,36 @@
                                 <i data-feather="home" class="feather-icon"></i><span class="hide-menu"> Rol </span>
                             </a>
                         </li>
+                        <li class="sidebar-item">
+                            <a href='{{ route('sucursal.listado') }}' class="sidebar-link">
+                                <i data-feather="home" class="feather-icon"></i><span class="hide-menu"> Sucursal </span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item">
+                            <a href='{{ route('usuario.listado') }}' class="sidebar-link">
+                                <i data-feather="home" class="feather-icon"></i><span class="hide-menu"> Usuario </span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item">
+                            <a href='{{ route('marca.listado') }}' class="sidebar-link">
+                                <i data-feather="home" class="feather-icon"></i><span class="hide-menu"> Marca </span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item">
+                            <a href='{{ route('cliente.listado') }}' class="sidebar-link">
+                                <i data-feather="home" class="feather-icon"></i><span class="hide-menu"> Cliente </span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item">
+                            <a href='{{ route('auto.listado') }}' class="sidebar-link">
+                                <i data-feather="home" class="feather-icon"></i><span class="hide-menu"> Automovil </span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item">
+                            <a href='{{ route('servicio.listado') }}' class="sidebar-link">
+                                <i data-feather="home" class="feather-icon"></i><span class="hide-menu"> Servicio </span>
+                            </a>
+                        </li>
                     </ul>
                 </li>
                 <li class="nav-devider"></li>
