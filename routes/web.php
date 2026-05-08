@@ -5,9 +5,7 @@ use App\Http\Controllers\AutoSucursalController;
 use App\Http\Controllers\ClienteController;
 use App\Http\Controllers\ClienteSucursalController;
 use App\Http\Controllers\MarcaController;
-use App\Http\Controllers\ProductoController;
 use App\Http\Controllers\RolController;
-use App\Http\Controllers\ServicioController;
 use App\Http\Controllers\SucursalController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
@@ -67,33 +65,6 @@ Route::middleware('auth')->group(function () {
         Route::post('/ajaxListado', [AutoController::class, 'ajaxListado'])->name('auto.ajaxListado');
         Route::post('/guardarAuto', [AutoController::class, 'guardarAuto'])->name('auto.guardarAuto');
         Route::post('/eliminarAuto', [AutoController::class, 'eliminarAuto'])->name('auto.eliminarAuto');
-    });
-    // SERVICIO
-    Route::prefix('/servicio')->group(function(){
-        Route::get('/listado', [ServicioController::class, 'listado'])->name('servicio.listado');
-        Route::post('/ajaxListado', [ServicioController::class, 'ajaxListado'])->name('servicio.ajaxListado');
-        Route::post('/guardarServicio', [ServicioController::class, 'guardarServicio'])->name('servicio.guardarServicio');
-        Route::post('/eliminarServicio', [ServicioController::class, 'eliminarServicio'])->name('servicio.eliminarServicio');
-    });
-    // PRODUCTO
-    Route::prefix('/producto')->group(function(){
-        Route::get('/listado', [ProductoController::class, 'listado'])->name('producto.listado');
-        Route::post('/ajaxListado', [ProductoController::class, 'ajaxListado'])->name('producto.ajaxListado');
-        Route::post('/guardarProducto', [ProductoController::class, 'guardarProducto'])->name('producto.guardarProducto');
-        Route::post('/eliminarProducto', [ProductoController::class, 'eliminarProducto'])->name('producto.eliminarProducto');
-
-        Route::post('/guardarStockSucursal', [ProductoController::class, 'guardarStockSucursal'])->name('producto.guardarStockSucursal');
-        Route::post('/ajaxStockSucursal', [ProductoController::class, 'ajaxStockSucursal'])->name('producto.ajaxStockSucursal');
-        Route::post('/ajaxFormTransferencia', [ProductoController::class, 'ajaxFormTransferencia'])->name('producto.ajaxFormTransferencia');
-        Route::post('/guardarTransferenciaSucursal', [ProductoController::class, 'guardarTransferenciaSucursal'])->name('producto.guardarTransferenciaSucursal');
-        Route::post('/guardarSalidaSucursal', [ProductoController::class, 'guardarSalidaSucursal'])->name('producto.guardarSalidaSucursal');
-
-        Route::get('/pdfProductoStock', [ProductoController::class, 'pdfProductoStock'])->name('producto.pdfProductoStock');
-
-        Route::post('/generarReporteIngreso', [ProductoController::class, 'generarReporteIngreso'])->name('producto.generarReporteIngreso');
-        Route::post('/generarReporteSalida', [ProductoController::class, 'generarReporteSalida'])->name('producto.generarReporteSalida');
-
-        Route::post('/importarServiciosProductosExcel', [ProductoController::class, 'importarServiciosProductosExcel'])->name('producto.importarServiciosProductosExcel');
     });
 
     //ADICICONES POR SUCURSAL
