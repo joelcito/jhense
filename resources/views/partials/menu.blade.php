@@ -3,6 +3,14 @@
     <div class="scroll-sidebar">
         <!-- Sidebar navigation-->
         <nav class="sidebar-nav">
+            @php
+                $user = Auth::user();
+                if($user->rol_id == 1){
+                    $misSucursales = \App\Models\Sucursal::all();
+                }else{
+                    $misSucursales = \App\Models\Sucursal::where('id', $user->sucursal_id)->limit(1)->get();
+                }
+            @endphp
             <ul id="sidebarnav">
                 <!-- User Profile-->
                 <li>
@@ -26,7 +34,7 @@
                 <!-- User Profile-->
                 <li class="nav-small-cap"><i class="mdi mdi-dots-horizontal"></i> <span class="hide-menu">ADMINISTRACION</span></li>
                 <li class="sidebar-item">
-                    <a class="sidebar-link has-arrow waves-effect waves-dark" href="javascript:void(0)" aria-expanded="false">
+                    <a class="sidebar-link has-arrow waves-effect waves-dark" aria-expanded="false">
                         <i data-feather="home" class="feather-icon"></i><span class="hide-menu"> Administracion</span>
                     </a>
                     <ul aria-expanded="false" class="collapse  first-level">
@@ -60,7 +68,7 @@
                                 <i data-feather="home" class="feather-icon"></i><span class="hide-menu"> Automovil </span>
                             </a>
                         </li>
-                        <li class="sidebar-item">
+                        {{-- <li class="sidebar-item">
                             <a href='{{ route('servicio.listado') }}' class="sidebar-link">
                                 <i data-feather="home" class="feather-icon"></i><span class="hide-menu"> Servicio </span>
                             </a>
@@ -69,9 +77,31 @@
                             <a href='{{ route('producto.listado') }}' class="sidebar-link">
                                 <i data-feather="home" class="feather-icon"></i><span class="hide-menu"> Producto </span>
                             </a>
-                        </li>
+                        </li> --}}
                     </ul>
                 </li>
+
+                {{-- TALLERES --}}
+                <li class="nav-small-cap"><i class="mdi mdi-dots-horizontal"></i> <span class="hide-menu">TALLERES</span></li>
+                @foreach ($misSucursales as $ms)
+                    <li class="sidebar-item">
+                        <a class="sidebar-link has-arrow waves-effect waves-dark" aria-expanded="false">
+                            <i data-feather="home" class="feather-icon"></i><span class="hide-menu"> {{ $ms->nombre }}</span>
+                        </a>
+                        <ul aria-expanded="false" class="collapse  first-level">
+                            <li class="sidebar-item">
+                                <a href="{{ route('clienteSucursal.listado', ['sucursal_id' => $ms->id]) }}" class="sidebar-link">
+                                    <i data-feather="home" class="feather-icon"></i><span class="hide-menu"> Clientes </span>
+                                </a>
+                            </li>
+                            <li class="sidebar-item">
+                                <a href="{{ route('autoSucursal.listado', ['sucursal_id' => $ms->id]) }}" class="sidebar-link">
+                                    <i data-feather="home" class="feather-icon"></i><span class="hide-menu"> Automoviles </span>
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+                @endforeach
                 <li class="nav-devider"></li>
             </ul>
         </nav>

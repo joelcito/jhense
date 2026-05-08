@@ -20,6 +20,9 @@ return new class extends Migration
             $table->foreign('usuario_eliminador_id')->references('id')->on('users');
             $table->unsignedBigInteger('usuario_eliminador_id')->nullable();
 
+            $table->foreign('sucursal_id')->references('id')->on('sucursales');
+            $table->unsignedBigInteger('sucursal_id')->nullable();
+
             $table->string('nombres')->nullable();
             $table->string('ap_paterno')->nullable();
             $table->string('ap_materno')->nullable();

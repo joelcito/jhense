@@ -7,7 +7,7 @@
         <br>
         <div class="form-group ">
             <div class="col-xs-12">
-                <input id="name" type="text" class="form-control  @error('name') is-invalid @enderror" name="name" value="{{ old('name') }}" required autocomplete="name" autofocus placeholder="Nombre de Usuario" />
+                <input id="name" type="text" class="form-control  @error('email') is-invalid @enderror" name="email" value="{{ old('email') }}" required autocomplete="off" autofocus placeholder="Gmail de Usuario" />
 
                 @error('email')
                     <span class="invalid-feedback" role="alert">

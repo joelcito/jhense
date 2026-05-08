@@ -15,6 +15,7 @@ class Cliente extends Model
         'usuario_creador_id',
         'usuario_modificador_id',
         'usuario_eliminador_id',
+        'sucursal_id',
         'nombres',
         'ap_paterno',
         'ap_materno',

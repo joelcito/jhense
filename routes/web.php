@@ -1,7 +1,9 @@
 <?php
 
 use App\Http\Controllers\AutoController;
+use App\Http\Controllers\AutoSucursalController;
 use App\Http\Controllers\ClienteController;
+use App\Http\Controllers\ClienteSucursalController;
 use App\Http\Controllers\MarcaController;
 use App\Http\Controllers\ProductoController;
 use App\Http\Controllers\RolController;
@@ -19,6 +21,8 @@ Route::get('/dashboard', function () {
 })->middleware(['auth', 'verified'])->name('dashboard');
 
 Route::middleware('auth')->group(function () {
+
+    //1: Admin | 2: Supervisor | 3: Jefe Mecanico | 4: Mecanico | 5: Secretaria
 
     // ROL
     Route::prefix('/rol')->group(function () {
@@ -90,6 +94,22 @@ Route::middleware('auth')->group(function () {
         Route::post('/generarReporteSalida', [ProductoController::class, 'generarReporteSalida'])->name('producto.generarReporteSalida');
 
         Route::post('/importarServiciosProductosExcel', [ProductoController::class, 'importarServiciosProductosExcel'])->name('producto.importarServiciosProductosExcel');
+    });
+
+    //ADICICONES POR SUCURSAL
+    // CLIENTE
+    Route::prefix('/cliente-sucursal')->group(function(){
+        Route::get('/listado/{sucursal_id}', [ClienteSucursalController::class, 'listado'])->name('clienteSucursal.listado');
+        Route::post('/ajaxListado', [ClienteSucursalController::class, 'ajaxListado'])->name('clienteSucursal.ajaxListado');
+        Route::post('/guardarCliente', [ClienteSucursalController::class, 'guardarCliente'])->name('clienteSucursal.guardarCliente');
+        Route::post('/eliminarCliente', [ClienteSucursalController::class, 'eliminarCliente'])->name('clienteSucursal.eliminarCliente');
+    });
+    // AUTO
+    Route::prefix('/auto-sucursal')->group(function () {
+        Route::get('/listado/{sucursal_id}', [AutoSucursalController::class, 'listado'])->name('autoSucursal.listado');
+        Route::post('/ajaxListado', [AutoSucursalController::class, 'ajaxListado'])->name('autoSucursal.ajaxListado');
+        Route::post('/guardarAuto', [AutoSucursalController::class, 'guardarAuto'])->name('autoSucursal.guardarAuto');
+        Route::post('/eliminarAuto', [AutoSucursalController::class, 'eliminarAuto'])->name('autoSucursal.eliminarAuto');
     });
 });
 
