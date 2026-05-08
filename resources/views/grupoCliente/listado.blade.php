@@ -57,7 +57,7 @@
         <h4 class="mb-0 text-white">
             LISTADO DE GRUPOS DE CLIENTES &nbsp;&nbsp;
             <button type="button" class="btn waves-effect waves-light btn-sm btn-success" onclick="nuevoGrupo()"><i
-                    class="fas fa-plus"></i> &nbsp; NUEVO GRUPO</button>
+                    class="fas fa-plus"></i> &nbsp; NUEVO</button>
         </h4>
     </div>
     <div class="card-body">

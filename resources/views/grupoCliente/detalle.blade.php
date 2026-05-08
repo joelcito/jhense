@@ -60,6 +60,53 @@
                 <h4 class="text-info">Grupo: {{ $grupo->nombre }}</h4>
             </div>
         </div>
+        <form id="formularioItemRangos">
+            <div class="row">
+                <div class="col-md-2">
+                    <div class="form-group">
+                        <label class="control-label">1° Rango Item</label>
+                        <span class="text-danger">
+                            <i class="mr-2 mdi mdi-alert-circle"></i>
+                        </span>
+                        <input type="number" name="item_1" id="item_1" class="form-control" >
+                        <div class="text-danger error-message" id="error-item_1"></div>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="form-group">
+                        <label class="control-label">2° Rango Item</label>
+                        <span class="text-danger">
+                            <i class="mr-2 mdi mdi-alert-circle"></i>
+                        </span>
+                        <input type="number" name="item_2" id="item_2" class="form-control" >
+                        <div class="text-danger error-message" id="error-item_2"></div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="form-group">
+                        <label class="control-label">Categoria</label>
+                        <span class="text-danger">
+                            <i class="mr-2 mdi mdi-alert-circle"></i>
+                        </span>
+                        <select name="categoria" id="categoria" class="form-control"
+                            required>
+                            <option value="">Seleccione</option>
+                            <option value="PREVENTIVO">PREVENTIVO</option>
+                            <option value="CORRECTIVO">CORRECTIVO</option>
+                            <option value="SUMINISTRO">SUMINISTRO</option>
+                            <option value="REPUESTOS">REPUESTOS</option>
+                            <option value="OTROS">OTROS</option>
+                        </select>
+                        <div class="text-danger error-message" id="error-categoria"></div>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <label class="control-label text-white">.</label>
+                    <button type="button" class="btn waves-effect waves-light btn-block btn-success"
+                        onclick="guardarItemRangos()">GUARDAR</button>
+                </div>
+            </div>
+        </form>
         <div id="tabla_detalles"></div>
     </div>
 </div>
@@ -112,6 +159,73 @@
     function limpiarErorres() {
         $('.error-message').html('');
         $('.is-invalid').removeClass('is-invalid');
+    }
+
+    function limpiarFormularioItem() {
+        $('#item_1').val('');
+        $('#item_2').val('');
+        $('#categoria').val('');
+    }
+
+    function guardarItemRangos(){
+        let datos = $('#formularioItemRangos').serializeArray();
+        datos.push({
+            name: 'sucursal_id',
+            value: sucursal.id
+        });
+        datos.push({
+            name: 'grupo_id',
+            value: grupo.id
+        });
+        datos.push({
+            name: 'grupo_cliente_id',
+            value: grupoCliente.id
+        });
+
+        $.ajax({
+            url: "{{ route('grupoCliente.guardarItemRangos') }}",
+            data: datos,
+            type: 'POST',
+            success: function(data) {
+                if(data.estado){
+                    limpiarFormularioItem();
+                    ajaxListado();
+                    Swal.fire(
+                        'Excelente!',
+                        'Se cambio exitosamente las categorias de items.',
+                        'success'
+                    )
+                }else{
+                    Swal.fire(
+                        'Error!',
+                        'Ocurrió un error al guardar los rangos de items, verifique que los datos sean correctos.',
+                        'error'
+                    )
+                }
+            },
+            error: function(xhr) {
+                limpiarErorres();
+
+                if (xhr.status === 422) {
+                    let errors = xhr.responseJSON.errors;
+                    $.each(errors, function(key, messages) {
+                        let input = $('[name="' + key + '"]');
+                        let errorDiv = $('#error-' + key);
+
+                        if (input.length > 0) {
+                            input.addClass('is-invalid'); // Agregar clase de error
+                            errorDiv.html('<span>' + messages[0] + '</span>'); // Mostrar mensaje
+                        }
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'Ocurrió un error inesperado.',
+                    });
+                }
+            }
+        });
     }
 
     //EXCEL

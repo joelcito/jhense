@@ -123,6 +123,46 @@ class GrupoClienteController extends Controller
         return $data;
     }
 
+    public function guardarItemRangos(Request $request){
+        if($request->ajax()){
+
+            $request->validate([
+                'grupo_cliente_id' => 'required',
+                'item_1' => 'required|numeric',
+                'item_2' => 'required|numeric',
+                'categoria' => 'required',
+            ]);
+
+            $grupo_cliente_id = $request->input('grupo_cliente_id');
+            $item_1 = $request->input('item_1');
+            $item_2 = $request->input('item_2');
+            $categoria = $request->input('categoria');
+            $usuario = Auth::user();
+
+            $grupo = GrupoCliente::with(['servicios', 'servicios' => function($query) use ($item_1, $item_2){
+                    $query->whereBetween('item', [$item_1, $item_2]);
+                }])
+                ->find($grupo_cliente_id);
+
+            $serviciosEnRango = $grupo->servicios;
+            if(count($serviciosEnRango) == 0){
+                return Respuesta::error(null, "No hay servicios en el rango de items seleccionado");
+            }
+
+            foreach($serviciosEnRango as $servicio){
+                $servicio->usuario_modificador_id = $usuario->id;
+                $servicio->categoria = $categoria;
+                $servicio->save();
+            }
+
+            $data = Respuesta::success(null, "Datos obtenidos correctamente");
+
+        }else{
+            $data = Respuesta::error(null, "No existe");
+        }
+        return $data;
+    }
+
     public function descargarFormatoImportarExcel(Request $request){
         if($request->ajax()){
             // generacion del excel

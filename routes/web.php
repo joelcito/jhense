@@ -100,6 +100,7 @@ Route::middleware('auth')->group(function () {
 
         Route::get('/detalle/{grupo_cliente_id}', [GrupoClienteController::class, 'detalle'])->name('grupoCliente.detalle');
         Route::post('/ajaxDetalle', [GrupoClienteController::class, 'ajaxDetalle'])->name('grupoCliente.ajaxDetalle');
+        Route::post('/guardarItemRangos', [GrupoClienteController::class, 'guardarItemRangos'])->name('grupoCliente.guardarItemRangos');
         Route::post('/descargarFormatoImportarExcel', [GrupoClienteController::class, 'descargarFormatoImportarExcel'])->name('grupoCliente.descargarFormatoImportarExcel');
         Route::post('/importarServiciosExcel', [GrupoClienteController::class, 'importarServiciosExcel'])->name('grupoCliente.importarServiciosExcel');
     });
