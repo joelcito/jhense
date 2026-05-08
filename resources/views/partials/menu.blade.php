@@ -5,6 +5,7 @@
         <nav class="sidebar-nav">
             @php
                 $user = Auth::user();
+                $gruposTotales = \App\Models\Grupo::all();
                 if($user->rol_id == 1){
                     $misSucursales = \App\Models\Sucursal::all();
                 }else{
@@ -68,6 +69,11 @@
                                 <i data-feather="home" class="feather-icon"></i><span class="hide-menu"> Automovil </span>
                             </a>
                         </li>
+                        <li class="sidebar-item">
+                            <a href='{{ route('grupo.listado') }}' class="sidebar-link">
+                                <i data-feather="home" class="feather-icon"></i><span class="hide-menu"> Grupos </span>
+                            </a>
+                        </li>
                         {{-- <li class="sidebar-item">
                             <a href='{{ route('servicio.listado') }}' class="sidebar-link">
                                 <i data-feather="home" class="feather-icon"></i><span class="hide-menu"> Servicio </span>
@@ -99,6 +105,20 @@
                                     <i data-feather="home" class="feather-icon"></i><span class="hide-menu"> Automoviles </span>
                                 </a>
                             </li>
+                            @foreach ( $gruposTotales as $grupo)
+                                <li class="sidebar-item">
+                                    <a class="sidebar-link has-arrow waves-effect waves-dark" aria-expanded="false">
+                                        <i data-feather="home" class="feather-icon"></i><span class="hide-menu"> {{ $grupo->nombre }}</span>
+                                    </a>
+                                    <ul aria-expanded="false" class="collapse  first-level">
+                                        <li class="sidebar-item">
+                                            <a href="{{ route('grupoCliente.listado', ['sucursal_id' => $ms->id, 'grupo_id' => $grupo->id]) }}" class="sidebar-link">
+                                                <i data-feather="home" class="feather-icon"></i><span class="hide-menu"> Clientes </span>
+                                            </a>
+                                        </li>
+                                    </ul>
+                                </li>
+                            @endforeach
                         </ul>
                     </li>
                 @endforeach

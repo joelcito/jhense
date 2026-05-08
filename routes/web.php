@@ -4,6 +4,8 @@ use App\Http\Controllers\AutoController;
 use App\Http\Controllers\AutoSucursalController;
 use App\Http\Controllers\ClienteController;
 use App\Http\Controllers\ClienteSucursalController;
+use App\Http\Controllers\GrupoClienteController;
+use App\Http\Controllers\GrupoController;
 use App\Http\Controllers\MarcaController;
 use App\Http\Controllers\RolController;
 use App\Http\Controllers\SucursalController;
@@ -66,6 +68,13 @@ Route::middleware('auth')->group(function () {
         Route::post('/guardarAuto', [AutoController::class, 'guardarAuto'])->name('auto.guardarAuto');
         Route::post('/eliminarAuto', [AutoController::class, 'eliminarAuto'])->name('auto.eliminarAuto');
     });
+    // GRUPO
+    Route::prefix('/grupo')->group(function () {
+        Route::get('/listado', [GrupoController::class, 'listado'])->name('grupo.listado');
+        Route::post('/ajaxListado', [GrupoController::class, 'ajaxListado'])->name('grupo.ajaxListado');
+        Route::post('/guardarGrupo', [GrupoController::class, 'guardarGrupo'])->name('grupo.guardarGrupo');
+        Route::post('/eliminarGrupo', [GrupoController::class, 'eliminarGrupo'])->name('grupo.eliminarGrupo');
+    });
 
     //ADICICONES POR SUCURSAL
     // CLIENTE
@@ -81,6 +90,18 @@ Route::middleware('auth')->group(function () {
         Route::post('/ajaxListado', [AutoSucursalController::class, 'ajaxListado'])->name('autoSucursal.ajaxListado');
         Route::post('/guardarAuto', [AutoSucursalController::class, 'guardarAuto'])->name('autoSucursal.guardarAuto');
         Route::post('/eliminarAuto', [AutoSucursalController::class, 'eliminarAuto'])->name('autoSucursal.eliminarAuto');
+    });
+    // GRUPO-CLIENTE
+    Route::prefix('/grupo-cliente')->group(function () {
+        Route::get('/listado/{sucursal_id}/{grupo_id}', [GrupoClienteController::class, 'listado'])->name('grupoCliente.listado');
+        Route::post('/ajaxListado', [GrupoClienteController::class, 'ajaxListado'])->name('grupoCliente.ajaxListado');
+        Route::post('/guardarGrupo', [GrupoClienteController::class, 'guardarGrupo'])->name('grupoCliente.guardarGrupo');
+        Route::post('/eliminarGrupo', [GrupoClienteController::class, 'eliminarGrupo'])->name('grupoCliente.eliminarGrupo');
+
+        Route::get('/detalle/{grupo_cliente_id}', [GrupoClienteController::class, 'detalle'])->name('grupoCliente.detalle');
+        Route::post('/ajaxDetalle', [GrupoClienteController::class, 'ajaxDetalle'])->name('grupoCliente.ajaxDetalle');
+        Route::post('/descargarFormatoImportarExcel', [GrupoClienteController::class, 'descargarFormatoImportarExcel'])->name('grupoCliente.descargarFormatoImportarExcel');
+        Route::post('/importarServiciosExcel', [GrupoClienteController::class, 'importarServiciosExcel'])->name('grupoCliente.importarServiciosExcel');
     });
 });
 
