@@ -23,7 +23,7 @@
                 <div class="modal-body">
                     <input type="hidden" name="id" id="id">
                     <div class="row">
-                        <div class="col-md-12">
+                        <div class="col-md-9">
                             <div class="form-group">
                                 <label class="control-label">Cliente</label>
                                 <span class="text-danger">
@@ -37,6 +37,13 @@
                                     @endforeach
                                 </select>
                                 <div class="text-danger error-message" id="error-cliente_id"></div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label class="control-label">Monto Inicio</label>
+                                <input type="number" name="monto_inicio" id="monto_inicio" class="form-control" required>
+                                <div class="text-danger error-message" id="error-monto_inicio"></div>
                             </div>
                         </div>
                     </div>
@@ -120,6 +127,7 @@
 
         $('#id').val(0);
         $('#cliente_id').val(null).trigger('change');
+        $('#monto_inicio').val('');
         $("#modalGrupo").modal('show');
     }
 

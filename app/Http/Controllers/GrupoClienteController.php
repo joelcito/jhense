@@ -57,6 +57,7 @@ class GrupoClienteController extends Controller
 
             $grupo_id  = $request->input('grupo_id');
             $cliente_id  = $request->input('cliente_id');
+            $monto_inicio  = $request->input('monto_inicio');
             $usuario = Auth::user();
 
             if( $id == 0 ){
@@ -69,6 +70,7 @@ class GrupoClienteController extends Controller
 
             $grupo->grupo_id           = $grupo_id;
             $grupo->cliente_id     = $cliente_id;
+            $grupo->monto_inicio = $monto_inicio;
             $grupo->save();
 
             $data = Respuesta::success(null, "Datos obtenidos correctamente");

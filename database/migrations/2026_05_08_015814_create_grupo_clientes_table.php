@@ -24,6 +24,8 @@ return new class extends Migration
             $table->unsignedBigInteger('grupo_id')->nullable();
             $table->foreign('cliente_id')->references('id')->on('clientes');
             $table->unsignedBigInteger('cliente_id')->nullable();
+            
+            $table->decimal('monto_inicio', 12, 2)->nullable();
 
             $table->string('estado')->nullable();
             $table->datetime('deleted_at')->nullable();

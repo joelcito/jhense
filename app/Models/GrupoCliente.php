@@ -18,6 +18,7 @@ class GrupoCliente extends Model
         'usuario_eliminador_id',
         'grupo_id',
         'cliente_id',
+        'monto_inicio',
         'estado',
         'deleted_at'
     ];

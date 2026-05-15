@@ -4,6 +4,7 @@
             <tr>
                 <th>#</th>
                 <th>Cliente</th>
+                <th>Monto Inicio</th>
                 <th>Opciones</th>
             </tr>
         </thead>
@@ -12,6 +13,7 @@
             <tr>
                 <td>{{ $index + 1 }}</td>
                 <td>{{ $g->cliente->nombres ?? '' }} {{ $g->cliente->ap_paterno ?? '' }} {{ $g->cliente->ap_materno ?? '' }}</td>
+                <td>{{ $g->monto_inicio }}</td>
                 <td>
                     <a href="{{ route('grupoCliente.detalle', $g->id) }}" class="btn btn-icon btn-sm btn-info" title="Detalles"><i class="fa fa-arrow-right"></i></a>
                     <button class="btn btn-icon btn-sm btn-warning" title="Editar Grupo"
