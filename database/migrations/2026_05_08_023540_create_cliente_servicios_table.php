@@ -25,8 +25,12 @@ return new class extends Migration
 
             $table->integer('item')->nullable();
             $table->string('categoria')->nullable();
-            $table->string('nombre')->nullable();
+            $table->string('sub_categoria')->nullable();
+            $table->text('nombre')->nullable();
             $table->decimal('costo', 12, 2)->nullable();
+            $table->string('unidad_medida')->nullable();
+            $table->string('cantidad')->nullable();
+            $table->decimal('total', 12, 2)->nullable();
 
             $table->string('estado')->nullable();
             $table->datetime('deleted_at')->nullable();

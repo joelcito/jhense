@@ -19,8 +19,12 @@ class ClienteServicio extends Model
         'grupo_cliente_id',
         'item',
         'categoria',
+        'sub_categoria',
         'nombre',
         'costo',
+        'unidad_medida',
+        'cantidad',
+        'total',
         'estado',
         'deleted_at'
     ];

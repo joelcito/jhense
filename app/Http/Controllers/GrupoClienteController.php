@@ -170,10 +170,14 @@ class GrupoClienteController extends Controller
             $libro       = new Spreadsheet();
             $hoja        = $libro->getActiveSheet();
 
-            $hoja->getColumnDimension('A')->setWidth(30);
-            $hoja->getColumnDimension('B')->setWidth(30);
-            $hoja->getColumnDimension('C')->setWidth(30);
-            $hoja->getColumnDimension('D')->setWidth(30);
+            $hoja->getColumnDimension('A')->setWidth(20);
+            $hoja->getColumnDimension('B')->setWidth(20);
+            $hoja->getColumnDimension('C')->setWidth(20);
+            $hoja->getColumnDimension('D')->setWidth(20);
+            $hoja->getColumnDimension('E')->setWidth(20);
+            $hoja->getColumnDimension('F')->setWidth(20);
+            $hoja->getColumnDimension('G')->setWidth(20);
+            $hoja->getColumnDimension('H')->setWidth(20);
 
             // CREAMOS LA HOJA
             $hojaListaCategorias = $libro->createSheet();
@@ -188,10 +192,14 @@ class GrupoClienteController extends Controller
             //Hoja principal continuacion
             $hoja->setCellValue('A1', "SERVICIOS PARA IMPORTAR AL SISTEMA");
 
-            $hoja->setCellValue('A2', "ITEM");
-            $hoja->setCellValue('B2', "CATEGORIA");
-            $hoja->setCellValue('C2', "SERVICIO");
-            $hoja->setCellValue('D2', "COSTO"); 
+            $hoja->setCellValue('A2', "CATEGORIA");
+            $hoja->setCellValue('B2', "SUB CATEGORIA");
+            $hoja->setCellValue('C2', "ITEM");
+            $hoja->setCellValue('D2', "SERVICIO");
+            $hoja->setCellValue('E2', "UNIDAD DE MEDIDA");
+            $hoja->setCellValue('F2', "CANTIDAD");
+            $hoja->setCellValue('G2', "COSTO");
+            $hoja->setCellValue('H2', "TOTAL");
 
             $encabezadoStyle =[
                 'font' => [
@@ -204,7 +212,7 @@ class GrupoClienteController extends Controller
                 ],
             ];
 
-            $hoja->mergeCells('A1:D1');
+            $hoja->mergeCells('A1:H1');
             $hoja->getStyle('A1')->applyFromArray($encabezadoStyle);
 
             // Aplicar márgenes y formato a los encabezados
@@ -229,13 +237,13 @@ class GrupoClienteController extends Controller
                     ],
                 ],
             ];
-            $hoja->getStyle('A2:D2')->applyFromArray($encabezadoStyle);
+            $hoja->getStyle('A2:H2')->applyFromArray($encabezadoStyle);
 
             $contadorCeldas = 3;
             for($i = $contadorCeldas ; $i <= 1000 ; $i++){
 
                 // de aqui el seleccionable
-                $validacion = $hoja->getCell('B' . $i)->getDataValidation();
+                $validacion = $hoja->getCell('A' . $i)->getDataValidation();
                 $validacion->setType(DataValidation::TYPE_LIST);
                 $validacion->setErrorStyle(DataValidation::STYLE_STOP);
                 $validacion->setAllowBlank(true);
@@ -259,7 +267,7 @@ class GrupoClienteController extends Controller
             $hojaListaCategorias->getProtection()->setFormatCells(true);
 
             // Aplicar bordes a las celdas de datos
-            $hoja->getStyle('A3:D'.($contadorCeldas-1))->applyFromArray([
+            $hoja->getStyle('A3:H'.($contadorCeldas-1))->applyFromArray([
                 'borders' => [
                     'allBorders' => [
                         'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
@@ -309,33 +317,48 @@ class GrupoClienteController extends Controller
             foreach ($rows as $key => $row) {
                 if ($key < 2) continue; // Saltar encabezados
 
-                $item = $row[0];//ITEM
-                $categoria = $row[1];// CATEGORIA
-                $servicio = $row[2];//SERVICIO
-                $costo   = $row[3];//COSTO 
+                $categoria = $row[0];// CATEGORIA
+                $sub_categoria = $row[1];// CATEGORIA
+                $item = (int)$row[2];//ITEM
+                $servicio = $row[3];//SERVICIO
+                $unidad_medida = $row[4];//UNIDAD DE MEDIDA
+                $cantidad = (float)$row[5];//CANTIDAD
+                $costo   = (float)$row[6];//COSTO
+                $total   = (float)$row[7];//TOTAL
 
-                if(empty($item) && empty($categoria) && empty($servicio) && empty($costo)){
+                if(empty($item) && empty($categoria) && empty($sub_categoria) && empty($servicio) && empty($costo) && empty($unidad_medida) && empty($cantidad) && empty($total)){
                     break;
                 }
 
-                if (empty($item)) {
+                /* if (empty($item)) {
                     $errores[] = [
                         'fila' => $key + 1,
                         'texto' => 'El registro no tiene número de item, complete el campo',
                         'datos' => $row
                     ];
                     continue;
+                } */
+
+                if($item > 0){
+                    if (empty($categoria)) {
+                        $errores[] = [
+                            'fila' => $key + 1,
+                            'texto' => 'El registro no tiene categoria, complete el campo',
+                            'datos' => $row
+                        ];
+                        continue;
+                    }
+
+                    if (empty($sub_categoria)) {
+                        $errores[] = [
+                            'fila' => $key + 1,
+                            'texto' => 'El registro no tiene subcategoria, complete el campo',
+                            'datos' => $row
+                        ];
+                        continue;
+                    }
                 }
 
-                if (empty($categoria)) {
-                    $errores[] = [
-                        'fila' => $key + 1,
-                        'texto' => 'El registro no tiene categoria, complete el campo',
-                        'datos' => $row
-                    ];
-                    continue;
-                }
-                
                 if (empty($servicio)) {
                     $errores[] = [
                         'fila' => $key + 1,
@@ -344,6 +367,25 @@ class GrupoClienteController extends Controller
                     ];
                     continue;
                 }
+
+                if (empty($unidad_medida)) {
+                    $errores[] = [
+                        'fila' => $key + 1,
+                        'texto' => 'El registro no tiene unidad de medida, complete el campo',
+                        'datos' => $row
+                    ];
+                    continue;
+                }
+
+                if (empty($cantidad)) {
+                    $errores[] = [
+                        'fila' => $key + 1,
+                        'texto' => 'El registro no tiene cantidad, complete el campo',
+                        'datos' => $row
+                    ];
+                    continue;
+                }
+
                 if (empty($costo)) {
                     $errores[] = [
                         'fila' => $key + 1,
@@ -358,8 +400,12 @@ class GrupoClienteController extends Controller
                 $nuevo->grupo_cliente_id   = $grupo_cliente_id;
                 $nuevo->item = $item;
                 $nuevo->categoria = $categoria;
+                $nuevo->sub_categoria = $sub_categoria;
                 $nuevo->nombre = $servicio;
                 $nuevo->costo = $costo;
+                $nuevo->unidad_medida = $unidad_medida;
+                $nuevo->cantidad = $cantidad;
+                $nuevo->total = $total;
                 $nuevo->save();
 
                 $contador++;

@@ -2,19 +2,27 @@
     <table id="kt_table_grupo_cliente_detalles" class="table table-bordered table-striped text-center">
         <thead>
             <tr>
-                <th>Item</th>
                 <th>Categoria</th>
+                <th>Sub Categoria</th>
+                <th>Item</th>
                 <th>Servicio</th>
+                <th>Unidad de Medida</th>
+                <th>Cantidad</th>
                 <th>Costo</th>
+                <th>Total</th>
             </tr>
         </thead>
         <tbody>
             @forelse ( $servicios as $index => $ser)
             <tr>
-                <td>{{ $ser->item }}</td>
                 <td>{{ $ser->categoria ?? '' }}</td>
+                <td>{{ $ser->sub_categoria ?? '' }}</td>
+                <td>{{ $ser->item }}</td>
                 <td>{{ $ser->nombre ?? '' }}</td>
+                <td>{{ $ser->unidad_medida ?? '' }}</td>
+                <td>{{ $ser->cantidad ?? '' }}</td>
                 <td>{{ $ser->costo ?? '' }}</td>
+                <td>{{ $ser->total ?? '' }}</td>
             </tr>
             @empty
             <h4 class="text-danger">No hay datos</h4>
