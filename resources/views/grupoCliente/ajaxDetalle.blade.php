@@ -25,7 +25,9 @@
                 <td>{{ $ser->total ?? '' }}</td>
             </tr>
             @empty
-            <h4 class="text-danger">No hay datos</h4>
+            <tr>
+                <td colspan="8">No hay datos disponibles</td>
+            </tr>
             @endforelse
         </tbody>
     </table>

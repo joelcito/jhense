@@ -74,16 +74,11 @@
                                 <i data-feather="home" class="feather-icon"></i><span class="hide-menu"> Grupos </span>
                             </a>
                         </li>
-                        {{-- <li class="sidebar-item">
-                            <a href='{{ route('servicio.listado') }}' class="sidebar-link">
-                                <i data-feather="home" class="feather-icon"></i><span class="hide-menu"> Servicio </span>
+                        <li class="sidebar-item">
+                            <a href='{{ route('consulta.listado') }}' class="sidebar-link">
+                                <i data-feather="home" class="feather-icon"></i><span class="hide-menu"> Consultas </span>
                             </a>
                         </li>
-                        <li class="sidebar-item">
-                            <a href='{{ route('producto.listado') }}' class="sidebar-link">
-                                <i data-feather="home" class="feather-icon"></i><span class="hide-menu"> Producto </span>
-                            </a>
-                        </li> --}}
                     </ul>
                 </li>
 

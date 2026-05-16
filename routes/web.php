@@ -4,6 +4,7 @@ use App\Http\Controllers\AutoController;
 use App\Http\Controllers\AutoSucursalController;
 use App\Http\Controllers\ClienteController;
 use App\Http\Controllers\ClienteSucursalController;
+use App\Http\Controllers\ConsultaController;
 use App\Http\Controllers\GrupoClienteController;
 use App\Http\Controllers\GrupoController;
 use App\Http\Controllers\MarcaController;
@@ -32,14 +33,14 @@ Route::middleware('auth')->group(function () {
         Route::post('/eliminarRol', [RolController::class, 'eliminarRol'])->name('rol.eliminarRol');
     });
     // SUCURSALES
-    Route::prefix('/sucursal')->group(function(){
+    Route::prefix('/sucursal')->group(function () {
         Route::get('/listado', [SucursalController::class, 'listado'])->name('sucursal.listado');
         Route::post('/ajaxListado', [SucursalController::class, 'ajaxListado'])->name('sucursal.ajaxListado');
         Route::post('/guardarSucursal', [SucursalController::class, 'guardarSucursal'])->name('sucursal.guardarSucursal');
         Route::post('/eliminarSucursal', [SucursalController::class, 'eliminarSucursal'])->name('sucursal.eliminarSucursal');
     });
     //USUARIO
-    Route::prefix('/usuario')->group(function(){
+    Route::prefix('/usuario')->group(function () {
         Route::get('/listado', [UserController::class, 'listado'])->name('usuario.listado');
         Route::post('/ajaxListado', [UserController::class, 'ajaxListado'])->name('usuario.ajaxListado');
         Route::post('/guardarUsuario', [UserController::class, 'guardarUsuario'])->name('usuario.guardarUsuario');
@@ -55,7 +56,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/eliminarMarca', [MarcaController::class, 'eliminarMarca'])->name('marca.eliminarMarca');
     });
     // CLIENTE
-    Route::prefix('/cliente')->group(function(){
+    Route::prefix('/cliente')->group(function () {
         Route::get('/listado', [ClienteController::class, 'listado'])->name('cliente.listado');
         Route::post('/ajaxListado', [ClienteController::class, 'ajaxListado'])->name('cliente.ajaxListado');
         Route::post('/guardarCliente', [ClienteController::class, 'guardarCliente'])->name('cliente.guardarCliente');
@@ -75,10 +76,17 @@ Route::middleware('auth')->group(function () {
         Route::post('/guardarGrupo', [GrupoController::class, 'guardarGrupo'])->name('grupo.guardarGrupo');
         Route::post('/eliminarGrupo', [GrupoController::class, 'eliminarGrupo'])->name('grupo.eliminarGrupo');
     });
+    // CONSULTA
+    Route::prefix('/consulta')->group(function () {
+        Route::get('/listado', [ConsultaController::class, 'listado'])->name('consulta.listado');
+        Route::post('/ajaxListado', [ConsultaController::class, 'ajaxListado'])->name('consulta.ajaxListado');
+        Route::post('/guardarConsulta', [ConsultaController::class, 'guardarConsulta'])->name('consulta.guardarConsulta');
+        Route::post('/eliminarConsulta', [ConsultaController::class, 'eliminarConsulta'])->name('consulta.eliminarConsulta');
+    });
 
     //ADICICONES POR SUCURSAL
     // CLIENTE
-    Route::prefix('/cliente-sucursal')->group(function(){
+    Route::prefix('/cliente-sucursal')->group(function () {
         Route::get('/listado/{sucursal_id}', [ClienteSucursalController::class, 'listado'])->name('clienteSucursal.listado');
         Route::post('/ajaxListado', [ClienteSucursalController::class, 'ajaxListado'])->name('clienteSucursal.ajaxListado');
         Route::post('/guardarCliente', [ClienteSucursalController::class, 'guardarCliente'])->name('clienteSucursal.guardarCliente');
@@ -103,7 +111,18 @@ Route::middleware('auth')->group(function () {
         Route::post('/guardarItemRangos', [GrupoClienteController::class, 'guardarItemRangos'])->name('grupoCliente.guardarItemRangos');
         Route::post('/descargarFormatoImportarExcel', [GrupoClienteController::class, 'descargarFormatoImportarExcel'])->name('grupoCliente.descargarFormatoImportarExcel');
         Route::post('/importarServiciosExcel', [GrupoClienteController::class, 'importarServiciosExcel'])->name('grupoCliente.importarServiciosExcel');
+        Route::post('/guardarOrdenRecepcion', [GrupoClienteController::class, 'guardarOrdenRecepcion'])->name('grupoCliente.guardarOrdenRecepcion');
+        Route::post('/obtenerOrdenRecepcion', [GrupoClienteController::class, 'obtenerOrdenRecepcion'])->name('grupoCliente.obtenerOrdenRecepcion');
+        
+        Route::post('/guardarInformeDiagnostico', [GrupoClienteController::class, 'guardarInformeDiagnostico'])->name('grupoCliente.guardarInformeDiagnostico');
+        Route::post('/obtenerInformeDiagnostico', [GrupoClienteController::class, 'obtenerInformeDiagnostico'])->name('grupoCliente.obtenerInformeDiagnostico');
+
+        Route::get('/descargarPdfOrdenRecepcion/{id}', [GrupoClienteController::class, 'descargarPdfOrdenRecepcion'])->name('grupoCliente.descargarPdfOrdenRecepcion');
+        Route::get('/descargarExcelOrdenRecepcion/{id}', [GrupoClienteController::class, 'descargarExcelOrdenRecepcion'])->name('grupoCliente.descargarExcelOrdenRecepcion');
+
+        Route::get('/descargarPdfInformeDiagnostico/{id}', [GrupoClienteController::class, 'descargarPdfInformeDiagnostico'])->name('grupoCliente.descargarPdfInformeDiagnostico');
+        Route::get('/descargarExcelInformeDiagnostico/{id}', [GrupoClienteController::class, 'descargarExcelInformeDiagnostico'])->name('grupoCliente.descargarExcelInformeDiagnostico');
     });
 });
 
-require __DIR__.'/auth.php';
+require __DIR__ . '/auth.php';

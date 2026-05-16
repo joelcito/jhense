@@ -34,4 +34,8 @@ class GrupoCliente extends Model
     public function servicios(){
         return $this->hasMany(ClienteServicio::class, 'grupo_cliente_id');
     }
+
+    public function ordenesRecepcion(){
+        return $this->hasMany(OrdenRecepcion::class, 'grupo_cliente_id');
+    }
 }
