@@ -57,29 +57,7 @@
             </div>
 
             @php
-                $preventivos_full = [];
-                $correctivos_full = [];
-                $repuestos_full = [];
-                
                 $servicios = $grupoCliente->servicios ?? [];
-                foreach($servicios as $cs) {
-                    $cat = strtoupper($cs->categoria ?? '');
-                    $item = [
-                        'item' => $cs->item ?? '',
-                        'nombre' => $cs->nombre ?? '',
-                        'cantidad' => $cs->cantidad ?? 1,
-                        'unidad_medida' => $cs->unidad_medida ?? 'Unidad',
-                        'costo' => $cs->costo ?? 0,
-                        'total' => ($cs->cantidad ?? 1) * ($cs->costo ?? 0)
-                    ];
-                    if($cat == 'PREVENTIVO') {
-                        $preventivos_full[] = $item;
-                    } elseif($cat == 'CORRECTIVO') {
-                        $correctivos_full[] = $item;
-                    } else {
-                        $repuestos_full[] = $item;
-                    }
-                }
             @endphp
 
             <div class="row mb-4">
@@ -217,8 +195,10 @@
             </div>
 
             <div class="form-group text-right mt-5">
-                <a id="btnDescargarPdfCotiz" href="#" target="_blank" class="btn btn-danger" style="display:none;"><i class="fas fa-file-pdf"></i> Descargar PDF</a>
-                <a id="btnDescargarExcelCotiz" href="#" class="btn btn-success" style="display:none;"><i class="fas fa-file-excel"></i> Descargar Excel</a>
+                <a id="btnDescargarPdfCotiz" href="#" target="_blank" class="btn btn-danger" style="display:none;"><i class="fas fa-file-pdf"></i> Descargar Cotización PDF</a>
+                <a id="btnDescargarExcelCotiz" href="#" class="btn btn-success" style="display:none;"><i class="fas fa-file-excel"></i> Descargar Cotización Excel</a>
+                <a id="btnDescargarPdfOrdenTrabajo" href="#" target="_blank" class="btn btn-danger" style="display:none;"><i class="fas fa-file-pdf"></i> Descargar Orden Trabajo PDF</a>
+                <a id="btnDescargarExcelOrdenTrabajo" href="#" class="btn btn-success" style="display:none;"><i class="fas fa-file-excel"></i> Descargar Orden Trabajo Excel</a>
                 <button type="button" class="btn btn-primary" onclick="guardarCotizacion()">Guardar Cotización</button>
             </div>
         </form>
@@ -226,10 +206,6 @@
 </div>
 
 <script>
-    let initPrevFull = @json($preventivos_full ?? []);
-    let initCorrFull = @json($correctivos_full ?? []);
-    let initRepFull = @json($repuestos_full ?? []);
-
     function agregarFilaCotizacion(tablaId, arrName, item_data = null) {
         let tbody = $('#' + tablaId + ' tbody');
         let index = tbody.find('tr').length;
@@ -396,19 +372,18 @@
                     // Links
                     $('#btnDescargarPdfCotiz').attr('href', "{{ url('grupo-cliente/descargarPdfCotizacion') }}/" + orden.id).show();
                     $('#btnDescargarExcelCotiz').attr('href', "{{ url('grupo-cliente/descargarExcelCotizacion') }}/" + orden.id).show();
+                    $('#btnDescargarPdfOrdenTrabajo').attr('href', "{{ url('grupo-cliente/descargarPdfOrdenTrabajo') }}/" + orden.id).show();
+                    $('#btnDescargarExcelOrdenTrabajo').attr('href', "{{ url('grupo-cliente/descargarExcelOrdenTrabajo') }}/" + orden.id).show();
                 } else {
                     $('#cotizacion_id').val('');
                     $('#cotiz_servicio_taller').val('');
                     $('#cotiz_fecha_salida').val('');
                     $('#cotiz_dias_habiles').val('');
 
-                    // Ya no pre-cargamos automáticamente las filas para que el usuario las seleccione
-                    // initPrevFull.forEach(i => agregarFilaCotizacion('tabla_cotiz_preventivo', 'preventivos', i));
-                    // initCorrFull.forEach(i => agregarFilaCotizacion('tabla_cotiz_correctivo', 'correctivos', i));
-                    // initRepFull.forEach(i => agregarFilaCotizacion('tabla_cotiz_repuesto', 'repuestos', i));
-
                     $('#btnDescargarPdfCotiz').hide();
                     $('#btnDescargarExcelCotiz').hide();
+                    $('#btnDescargarPdfOrdenTrabajo').hide();
+                    $('#btnDescargarExcelOrdenTrabajo').hide();
                 }
                 recalcularCotizacion();
             }
@@ -429,6 +404,8 @@
                     
                     $('#btnDescargarPdfCotiz').attr('href', "{{ url('grupo-cliente/descargarPdfCotizacion') }}/" + $('#cotizacion_orden_recepcion_id').val()).show();
                     $('#btnDescargarExcelCotiz').attr('href', "{{ url('grupo-cliente/descargarExcelCotizacion') }}/" + $('#cotizacion_orden_recepcion_id').val()).show();
+                    $('#btnDescargarPdfOrdenTrabajo').attr('href', "{{ url('grupo-cliente/descargarPdfOrdenTrabajo') }}/" + $('#cotizacion_orden_recepcion_id').val()).show();
+                    $('#btnDescargarExcelOrdenTrabajo').attr('href', "{{ url('grupo-cliente/descargarExcelOrdenTrabajo') }}/" + $('#cotizacion_orden_recepcion_id').val()).show();
                 } else {
                     Swal.fire('Error!', 'Ocurrió un error al guardar.', 'error');
                 }

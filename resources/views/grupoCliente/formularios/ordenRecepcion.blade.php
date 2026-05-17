@@ -292,6 +292,9 @@
                     
                     // Cargar Formulario 4 (Cotización)
                     cargarDatosCotizacion(orden);
+
+                    // Cargar Formulario 6 (Orden de Trabajo Oficial)
+                    cargarDatosOrdenTrabajo(orden);
                     
                     // Mostrar tab 1 por defecto
                     $('#pills-form1-tab').tab('show');

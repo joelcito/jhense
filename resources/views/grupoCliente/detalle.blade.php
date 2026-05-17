@@ -193,6 +193,9 @@
                         <li class="nav-item">
                             <a class="nav-link" id="pills-form4-tab" data-toggle="pill" href="#pills-form4" role="tab" aria-controls="pills-form4" aria-selected="false">4. Cotización</a>
                         </li>
+                        <li class="nav-item">
+                            <a class="nav-link" id="pills-form5-tab" data-toggle="pill" href="#pills-form5" role="tab" aria-controls="pills-form5" aria-selected="false">5. Orden de Trabajo</a>
+                        </li>
                         <!-- Aquí se agregarán los demás formularios -->
                     </ul>
                     
@@ -215,6 +218,11 @@
                         <!-- FORM 4: COTIZACION -->
                         <div class="tab-pane fade" id="pills-form4" role="tabpanel" aria-labelledby="pills-form4-tab">
                             @include('grupoCliente.formularios.cotizacion')
+                        </div>
+
+                        <!-- FORM 5/6: ORDEN DE TRABAJO OFICIAL -->
+                        <div class="tab-pane fade" id="pills-form5" role="tabpanel" aria-labelledby="pills-form5-tab">
+                            @include('grupoCliente.formularios.ordenTrabajo')
                         </div>
                     </div>
                 </div>
@@ -250,6 +258,11 @@
         });
 
         $('#cotiz_buscador_servicios').select2({
+            placeholder: 'Seleccione...',
+            width: '100%'
+        });
+
+        $('#oto_buscador_servicios').select2({
             placeholder: 'Seleccione...',
             width: '100%'
         });

@@ -125,6 +125,14 @@ Route::middleware('auth')->group(function () {
         Route::get('/descargarPdfCotizacion/{id}', [GrupoClienteController::class, 'descargarPdfCotizacion'])->name('grupoCliente.descargarPdfCotizacion');
         Route::get('/descargarExcelCotizacion/{id}', [GrupoClienteController::class, 'descargarExcelCotizacion'])->name('grupoCliente.descargarExcelCotizacion');
 
+        Route::get('/descargarPdfOrdenTrabajo/{id}', [GrupoClienteController::class, 'descargarPdfOrdenTrabajo'])->name('grupoCliente.descargarPdfOrdenTrabajo');
+        Route::get('/descargarExcelOrdenTrabajo/{id}', [GrupoClienteController::class, 'descargarExcelOrdenTrabajo'])->name('grupoCliente.descargarExcelOrdenTrabajo');
+
+        Route::post('/guardarOrdenTrabajoOficial', [GrupoClienteController::class, 'guardarOrdenTrabajoOficial'])->name('grupoCliente.guardarOrdenTrabajoOficial');
+        Route::post('/obtenerOrdenTrabajoOficial', [GrupoClienteController::class, 'obtenerOrdenTrabajoOficial'])->name('grupoCliente.obtenerOrdenTrabajoOficial');
+        Route::get('/descargarPdfOrdenTrabajoOficial/{id}', [GrupoClienteController::class, 'descargarPdfOrdenTrabajoOficial'])->name('grupoCliente.descargarPdfOrdenTrabajoOficial');
+        Route::get('/descargarExcelOrdenTrabajoOficial/{id}', [GrupoClienteController::class, 'descargarExcelOrdenTrabajoOficial'])->name('grupoCliente.descargarExcelOrdenTrabajoOficial');
+
         Route::get('/descargarPdfOrdenRecepcion/{id}', [GrupoClienteController::class, 'descargarPdfOrdenRecepcion'])->name('grupoCliente.descargarPdfOrdenRecepcion');
         Route::get('/descargarExcelOrdenRecepcion/{id}', [GrupoClienteController::class, 'descargarExcelOrdenRecepcion'])->name('grupoCliente.descargarExcelOrdenRecepcion');
 

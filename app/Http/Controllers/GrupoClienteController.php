@@ -134,7 +134,7 @@ class GrupoClienteController extends Controller
             ->where('grupo_cliente_id', $grupo_cliente_id)
             ->get();
 
-        $consultas = Consulta::where('estado', 'ACTIVO')->orWhereNull('estado')->get();
+        $consultas = Consulta::all();
 
         return view('grupoCliente.detalle', compact('grupoCliente', 'sucursal', 'grupo', 'ordenesRecepcion', 'mecanicos', 'consultas', 'catalogoServicios'));
     }
@@ -1428,5 +1428,413 @@ class GrupoClienteController extends Controller
         $cotizacion->repuestos = $nuevosRep;
 
         return $cotizacion;
+    }
+
+    public function descargarPdfOrdenTrabajo($orden_id)
+    {
+        $cotizacion = Cotizacion::where('orden_recepcion_id', $orden_id)->firstOrFail();
+        $orden = OrdenRecepcion::with(['auto.marca', 'grupoCliente.cliente'])->findOrFail($orden_id);
+
+        $cotizacion = $this->reagruparCotizacion($cotizacion, $orden->grupo_cliente_id);
+
+        $pdf = Pdf::loadView('grupoCliente.formularios.pdfOrdenTrabajo', compact('cotizacion', 'orden'));
+
+        return $pdf->download('OrdenTrabajo_' . $cotizacion->id . '.pdf');
+    }
+
+    public function descargarExcelOrdenTrabajo($orden_id)
+    {
+        $cotizacion = Cotizacion::where('orden_recepcion_id', $orden_id)->firstOrFail();
+        $orden = OrdenRecepcion::with(['auto.marca', 'grupoCliente.cliente'])->findOrFail($orden_id);
+
+        $cotizacion = $this->reagruparCotizacion($cotizacion, $orden->grupo_cliente_id);
+
+        $libro = new Spreadsheet();
+        $hoja  = $libro->getActiveSheet();
+        $hoja->setTitle('Orden de Trabajo');
+
+        $borderThin  = ['borders' => ['allBorders' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN]]];
+        $headerStyle = [
+            'font'      => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
+            'fill'      => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => '003366']],
+            'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER],
+        ];
+        $right = ['alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_RIGHT]];
+        $center = ['alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER]];
+
+        $hoja->getColumnDimension('A')->setWidth(10);
+        $hoja->getColumnDimension('B')->setWidth(40);
+        $hoja->getColumnDimension('C')->setWidth(12);
+        $hoja->getColumnDimension('D')->setWidth(14);
+        $hoja->getColumnDimension('E')->setWidth(14);
+        $hoja->getColumnDimension('F')->setWidth(14);
+
+        $hoja->setCellValue('A1', 'ORDEN DE TRABAJOS REALIZADOS');
+        $hoja->mergeCells('A1:F1');
+        $hoja->getStyle('A1')->getFont()->setBold(true)->setSize(13);
+        $hoja->getStyle('A1')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+
+        $hoja->setCellValue('A3', 'VEHÍCULOS:');
+        $hoja->setCellValue('B3', ($orden->auto->marca->nombre ?? '') . ' ' . ($orden->auto->modelo ?? ''));
+        $hoja->setCellValue('D3', 'ORDEN DE SERVICIO N°:');
+        $hoja->setCellValue('E3', $orden->id);
+        $hoja->setCellValue('A4', 'PLACAS:');
+        $hoja->setCellValue('B4', $orden->auto->placa ?? '');
+        $hoja->setCellValue('D4', 'KILOMETRAJE ACTUAL:');
+        $hoja->setCellValue('E4', $orden->kilometraje ?? '');
+        $hoja->setCellValue('A5', 'EMPRESA :');
+        $hoja->setCellValue('B5', ($orden->grupoCliente->cliente->nombres ?? '') . ' ' . ($orden->grupoCliente->cliente->ap_paterno ?? ''));
+        $hoja->setCellValue('D5', 'FECHA DE INGRESO:');
+        $hoja->setCellValue('E5', \Carbon\Carbon::parse($orden->created_at)->format('Y-m-d'));
+        $hoja->setCellValue('A6', 'SERVICIO/TALLER:');
+        $hoja->setCellValue('B6', $cotizacion->servicio_taller ?? '');
+        $hoja->setCellValue('D6', 'FECHA DE SALIDA:');
+        $hoja->setCellValue('E6', $cotizacion->fecha_salida ?? '');
+
+        $hoja->getStyle('A3:F6')->applyFromArray($borderThin);
+
+        $row = 8;
+
+        $preventivos = is_string($cotizacion->preventivos) ? json_decode($cotizacion->preventivos, true) : $cotizacion->preventivos;
+        $correctivos = is_string($cotizacion->correctivos) ? json_decode($cotizacion->correctivos, true) : $cotizacion->correctivos;
+        $repuestos = is_string($cotizacion->repuestos) ? json_decode($cotizacion->repuestos, true) : $cotizacion->repuestos;
+
+        $sections = [
+            ['title' => 'MANTENIMIENTO PREVENTIVO', 'data' => $preventivos, 'subtotal' => $cotizacion->subtotal_preventivos],
+            ['title' => 'MANTENIMIENTO CORRECTIVO', 'data' => $correctivos, 'subtotal' => $cotizacion->subtotal_correctivos],
+            ['title' => 'REPUESTOS DE VEHÍCULOS', 'data' => $repuestos, 'subtotal' => $cotizacion->subtotal_repuestos],
+        ];
+
+        foreach ($sections as $section) {
+            $hoja->setCellValue('A' . $row, 'ITEM');
+            $hoja->setCellValue('B' . $row, $section['title']);
+            $hoja->setCellValue('C' . $row, 'Cantidad');
+            $hoja->setCellValue('D' . $row, 'Unidad');
+            $hoja->setCellValue('E' . $row, 'Precio Uni.');
+            $hoja->setCellValue('F' . $row, 'TOTAL');
+
+            $hoja->getStyle('A' . $row . ':F' . $row)->applyFromArray($headerStyle);
+            $startRow = $row;
+            $row++;
+
+            if (count($section['data']) > 0) {
+                foreach ($section['data'] as $item) {
+                    $hoja->setCellValue('A' . $row, $item['item'] ?? '');
+                    $hoja->setCellValue('B' . $row, $item['nombre'] ?? '');
+                    $hoja->setCellValue('C' . $row, $item['cantidad'] ?? 0);
+                    $hoja->setCellValue('D' . $row, $item['unidad_medida'] ?? '');
+                    $hoja->setCellValue('E' . $row, number_format((float)($item['costo'] ?? 0), 2));
+                    $hoja->setCellValue('F' . $row, number_format((float)($item['total'] ?? 0), 2));
+
+                    $hoja->getStyle('C' . $row . ':F' . $row)->applyFromArray($center);
+                    $hoja->getStyle('E' . $row . ':F' . $row)->applyFromArray($right);
+                    $row++;
+                }
+            } else {
+                $hoja->setCellValue('A' . $row, '');
+                $hoja->setCellValue('B' . $row, 'Sin registros');
+                $hoja->mergeCells('B' . $row . ':F' . $row);
+                $row++;
+            }
+
+            $hoja->setCellValue('A' . $row, 'Sub. TOTAL');
+            $hoja->mergeCells('A' . $row . ':E' . $row);
+            $hoja->setCellValue('F' . $row, number_format((float)$section['subtotal'], 2));
+            $hoja->getStyle('A' . $row . ':F' . $row)->getFont()->setBold(true);
+            $hoja->getStyle('A' . $row . ':E' . $row)->applyFromArray($right);
+
+            $hoja->getStyle('A' . $startRow . ':F' . $row)->applyFromArray($borderThin);
+            $row += 2;
+        }
+
+        $row++;
+        $hoja->setCellValue('D' . $row, 'SUMA TOTAL Bs.');
+        $hoja->mergeCells('D' . $row . ':E' . $row);
+        $hoja->setCellValue('F' . $row, number_format((float)$cotizacion->total_general, 2));
+        $hoja->getStyle('D' . $row . ':F' . $row)->applyFromArray($borderThin);
+        $hoja->getStyle('D' . $row . ':F' . $row)->getFont()->setBold(true);
+        $hoja->getStyle('D' . $row . ':E' . $row)->applyFromArray($right);
+
+        $fileName = 'OrdenTrabajo_' . $cotizacion->id . '.xlsx';
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header('Content-Disposition: attachment;filename="' . $fileName . '"');
+        header('Cache-Control: max-age=0');
+        $writer = new Xlsx($libro);
+        $writer->save('php://output');
+        exit;
+    }
+
+    /* ============================================================
+     * FORMULARIO 6 — ORDEN DE TRABAJO OFICIAL
+     * ============================================================ */
+
+    public function guardarOrdenTrabajoOficial(Request $request)
+    {
+        if ($request->ajax()) {
+            $orden_trabajo_oficial_id = $request->input('orden_trabajo_oficial_id');
+            $usuario = Auth::user();
+            $orden_recepcion_id = $request->input('orden_recepcion_id');
+
+            if ($orden_trabajo_oficial_id) {
+                $ot = OrdenTrabajo::find($orden_trabajo_oficial_id);
+                $ot->usuario_modificador_id = $usuario->id;
+            } else {
+                $ot = new OrdenTrabajo();
+                $ot->usuario_creador_id = $usuario->id;
+                $ot->orden_recepcion_id = $orden_recepcion_id;
+
+                // Generar número de orden secuencial
+                $orden = OrdenRecepcion::find($orden_recepcion_id);
+                $grupo_cliente_id = $orden->grupo_cliente_id;
+                $anioActual = date('y');
+
+                $maxSecuencial = OrdenTrabajo::whereHas('ordenRecepcion', function ($q) use ($grupo_cliente_id) {
+                    $q->where('grupo_cliente_id', $grupo_cliente_id);
+                })->where('anio', $anioActual)->max('numero_orden_secuencial');
+
+                $ot->numero_orden_secuencial = ($maxSecuencial ? $maxSecuencial : 0) + 1;
+                $ot->anio = $anioActual;
+            }
+
+            $ot->fecha_emision = $request->input('fecha_emision');
+
+            $mO = array_values($request->input('mano_obra', []));
+            $rE = array_values($request->input('repuestos', []));
+            $iN = array_values($request->input('insumos', []));
+            $tT = array_values($request->input('trabajos_tercero', []));
+
+            $ot->mano_obra        = json_encode($mO);
+            $ot->repuestos        = json_encode($rE);
+            $ot->insumos          = json_encode($iN);
+            $ot->trabajos_tercero = json_encode($tT);
+
+            $ot->subtotal_mano_obra        = $request->input('subtotal_mano_obra', 0);
+            $ot->subtotal_repuestos        = $request->input('subtotal_repuestos', 0);
+            $ot->subtotal_insumos          = $request->input('subtotal_insumos', 0);
+            $ot->subtotal_trabajos_tercero = $request->input('subtotal_trabajos_tercero', 0);
+            $ot->total_general             = $request->input('total_general', 0);
+
+            $ot->save();
+
+            $numStr = 'SCZ-TGM-OT-' . $ot->numero_orden_secuencial . '/' . $ot->anio;
+
+            return response()->json([
+                'estado' => true,
+                'orden_id' => $ot->id,
+                'numero_orden' => $numStr
+            ]);
+        }
+        return response()->json(['estado' => false]);
+    }
+
+    public function obtenerOrdenTrabajoOficial(Request $request)
+    {
+        if ($request->ajax()) {
+            $orden_id = $request->input('orden_recepcion_id');
+
+            $ot = OrdenTrabajo::where('orden_recepcion_id', $orden_id)->first();
+            if ($ot) {
+                $ot->mano_obra        = is_string($ot->mano_obra)        ? json_decode($ot->mano_obra, true)        : $ot->mano_obra;
+                $ot->repuestos        = is_string($ot->repuestos)        ? json_decode($ot->repuestos, true)        : $ot->repuestos;
+                $ot->insumos          = is_string($ot->insumos)          ? json_decode($ot->insumos, true)          : $ot->insumos;
+                $ot->trabajos_tercero = is_string($ot->trabajos_tercero) ? json_decode($ot->trabajos_tercero, true) : $ot->trabajos_tercero;
+                return response()->json(['estado' => true, 'orden' => $ot, 'cotizacion' => null]);
+            }
+
+            // No existe, intentar cargar de cotización (si hay)
+            $cotizacion = Cotizacion::where('orden_recepcion_id', $orden_id)->first();
+            if ($cotizacion) {
+                $orden = OrdenRecepcion::find($orden_id);
+                $cotizacion = $this->reagruparCotizacion($cotizacion, $orden->grupo_cliente_id);
+
+                // We need to map Cotizacion -> OrdenTrabajo format to help frontend
+                $prevs = is_string($cotizacion->preventivos) ? json_decode($cotizacion->preventivos, true) : $cotizacion->preventivos;
+                $corrs = is_string($cotizacion->correctivos) ? json_decode($cotizacion->correctivos, true) : $cotizacion->correctivos;
+                $reps  = is_string($cotizacion->repuestos) ? json_decode($cotizacion->repuestos, true) : $cotizacion->repuestos;
+
+                // Let's divide reps into repuestos, insumos, otros based on category
+                $serviciosGrup = ClienteServicio::where('grupo_cliente_id', $orden->grupo_cliente_id)->get();
+
+                $n_reps = [];
+                $n_insumos = [];
+                $n_otros = [];
+
+                if (is_array($reps)) {
+                    foreach ($reps as $srv) {
+                        if (!is_array($srv)) continue;
+                        $catActual = 'OTROS';
+                        $srvBusqueda = null;
+
+                        if (!empty($srv['item'])) {
+                            $srvBusqueda = $serviciosGrup->where('item', $srv['item'])->first();
+                        }
+                        if (!$srvBusqueda && !empty($srv['nombre'])) {
+                            $srvBusqueda = $serviciosGrup->where('nombre', $srv['nombre'])->first();
+                        }
+
+                        if ($srvBusqueda) {
+                            $catActual = strtoupper($srvBusqueda->categoria);
+                        }
+
+                        if ($catActual == 'REPUESTOS') {
+                            $n_reps[] = $srv;
+                        } elseif ($catActual == 'SUMINISTRO') {
+                            $n_insumos[] = $srv;
+                        } else {
+                            $n_otros[] = $srv;
+                        }
+                    }
+                }
+
+                $retCotiz = [
+                    'preventivos' => $prevs,
+                    'correctivos' => $corrs,
+                    'repuestos' => $n_reps,
+                    'insumos' => $n_insumos,
+                    'otros' => $n_otros
+                ];
+
+                return response()->json(['estado' => true, 'orden' => null, 'cotizacion' => $retCotiz]);
+            }
+
+            return response()->json(['estado' => true, 'orden' => null, 'cotizacion' => null]);
+        }
+        return response()->json(['estado' => false]);
+    }
+
+    public function descargarPdfOrdenTrabajoOficial($id)
+    {
+        $ot = OrdenTrabajo::findOrFail($id);
+        $orden = OrdenRecepcion::with(['auto.marca', 'grupoCliente.cliente'])->findOrFail($ot->orden_recepcion_id);
+
+        $ot->mano_obra        = is_string($ot->mano_obra)        ? json_decode($ot->mano_obra, true)        : $ot->mano_obra;
+        $ot->repuestos        = is_string($ot->repuestos)        ? json_decode($ot->repuestos, true)        : $ot->repuestos;
+        $ot->insumos          = is_string($ot->insumos)          ? json_decode($ot->insumos, true)          : $ot->insumos;
+        $ot->trabajos_tercero = is_string($ot->trabajos_tercero) ? json_decode($ot->trabajos_tercero, true) : $ot->trabajos_tercero;
+
+        $pdf = Pdf::loadView('grupoCliente.formularios.pdfOrdenTrabajoOficial', compact('ot', 'orden'));
+        return $pdf->download('OrdenTrabajoOficial_' . $ot->id . '.pdf');
+    }
+
+    public function descargarExcelOrdenTrabajoOficial($id)
+    {
+        $ot = OrdenTrabajo::findOrFail($id);
+        $orden = OrdenRecepcion::with(['auto.marca', 'grupoCliente.cliente'])->findOrFail($ot->orden_recepcion_id);
+
+        $ot->mano_obra        = is_string($ot->mano_obra)        ? json_decode($ot->mano_obra, true)        : $ot->mano_obra;
+        $ot->repuestos        = is_string($ot->repuestos)        ? json_decode($ot->repuestos, true)        : $ot->repuestos;
+        $ot->insumos          = is_string($ot->insumos)          ? json_decode($ot->insumos, true)          : $ot->insumos;
+        $ot->trabajos_tercero = is_string($ot->trabajos_tercero) ? json_decode($ot->trabajos_tercero, true) : $ot->trabajos_tercero;
+
+        $libro = new Spreadsheet();
+        $hoja  = $libro->getActiveSheet();
+        $hoja->setTitle('Orden de Trabajo');
+
+        $borderThin  = ['borders' => ['allBorders' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN]]];
+        $headerStyle = [
+            'font'      => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
+            'fill'      => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => '003366']],
+            'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER],
+        ];
+        $right = ['alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_RIGHT]];
+        $center = ['alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER]];
+
+        $hoja->getColumnDimension('A')->setWidth(10);
+        $hoja->getColumnDimension('B')->setWidth(40);
+        $hoja->getColumnDimension('C')->setWidth(12);
+        $hoja->getColumnDimension('D')->setWidth(14);
+        $hoja->getColumnDimension('E')->setWidth(14);
+        $hoja->getColumnDimension('F')->setWidth(14);
+
+        $hoja->setCellValue('A1', 'ORDEN DE TRABAJO');
+        $hoja->mergeCells('A1:F1');
+        $hoja->getStyle('A1')->getFont()->setBold(true)->setSize(13);
+        $hoja->getStyle('A1')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+
+        $numStr = $ot->numero_orden_secuencial . '/' . $ot->anio;
+
+        $hoja->setCellValue('A3', 'VEHÍCULOS:');
+        $hoja->setCellValue('B3', ($orden->auto->marca->nombre ?? '') . ' ' . ($orden->auto->modelo ?? ''));
+        $hoja->setCellValue('D3', 'N° DE ORDEN:');
+        $hoja->setCellValue('E3', $numStr);
+        $hoja->setCellValue('A4', 'PLACAS / CHASIS:');
+        $hoja->setCellValue('B4', $orden->auto->placa ?? '');
+        $hoja->setCellValue('D4', 'KILOMETRAJE:');
+        $hoja->setCellValue('E4', $orden->kilometraje ?? '');
+        $hoja->setCellValue('A5', 'EMPRESA / CLIENTE:');
+        $hoja->setCellValue('B5', ($orden->grupoCliente->cliente->nombres ?? '') . ' ' . ($orden->grupoCliente->cliente->ap_paterno ?? ''));
+        $hoja->setCellValue('D5', 'NIT / C.I.:');
+        $hoja->setCellValue('E5', $orden->grupoCliente->cliente->nit ?? '');
+        $hoja->setCellValue('A6', 'FECHA DE EMISIÓN:');
+        $hoja->setCellValue('B6', $ot->fecha_emision ?? '');
+
+        $hoja->getStyle('A3:F6')->applyFromArray($borderThin);
+
+        $row = 8;
+
+        $sections = [
+            ['title' => 'MANO DE OBRA',       'data' => $ot->mano_obra,        'subtotal' => $ot->subtotal_mano_obra],
+            ['title' => 'REPUESTOS',          'data' => $ot->repuestos,        'subtotal' => $ot->subtotal_repuestos],
+            ['title' => 'INSUMOS',            'data' => $ot->insumos,          'subtotal' => $ot->subtotal_insumos],
+            ['title' => 'TRABAJOS A TERCERO', 'data' => $ot->trabajos_tercero, 'subtotal' => $ot->subtotal_trabajos_tercero],
+        ];
+
+        foreach ($sections as $section) {
+            $hoja->setCellValue('A' . $row, 'N° Item Contrato');
+            $hoja->setCellValue('B' . $row, $section['title']);
+            $hoja->setCellValue('C' . $row, 'Unidad Medida');
+            $hoja->setCellValue('D' . $row, 'Cantidad Solicitada');
+            $hoja->setCellValue('E' . $row, 'Precio Unitario');
+            $hoja->setCellValue('F' . $row, 'Precio Total (Bs.)');
+
+            $hoja->getStyle('A' . $row . ':F' . $row)->applyFromArray($headerStyle);
+            $startRow = $row;
+            $row++;
+
+            if (is_array($section['data']) && count($section['data']) > 0) {
+                foreach ($section['data'] as $item) {
+                    $hoja->setCellValue('A' . $row, $item['item'] ?? '');
+                    $hoja->setCellValue('B' . $row, $item['nombre'] ?? '');
+                    $hoja->setCellValue('C' . $row, $item['unidad_medida'] ?? '');
+                    $hoja->setCellValue('D' . $row, $item['cantidad'] ?? 0);
+                    $hoja->setCellValue('E' . $row, number_format((float)($item['costo'] ?? 0), 2));
+                    $hoja->setCellValue('F' . $row, number_format((float)($item['total'] ?? 0), 2));
+
+                    $hoja->getStyle('C' . $row . ':F' . $row)->applyFromArray($center);
+                    $hoja->getStyle('E' . $row . ':F' . $row)->applyFromArray($right);
+                    $row++;
+                }
+            } else {
+                $hoja->setCellValue('A' . $row, '');
+                $hoja->setCellValue('B' . $row, 'Sin registros');
+                $hoja->mergeCells('B' . $row . ':F' . $row);
+                $row++;
+            }
+
+            $hoja->setCellValue('A' . $row, 'sub TOTAL Bs.');
+            $hoja->mergeCells('A' . $row . ':E' . $row);
+            $hoja->setCellValue('F' . $row, number_format((float)$section['subtotal'], 2));
+            $hoja->getStyle('A' . $row . ':F' . $row)->getFont()->setBold(true);
+            $hoja->getStyle('A' . $row . ':E' . $row)->applyFromArray($right);
+
+            $hoja->getStyle('A' . $startRow . ':F' . $row)->applyFromArray($borderThin);
+            $row += 2;
+        }
+
+        $row++;
+        $hoja->setCellValue('D' . $row, 'Total (Bs.):');
+        $hoja->mergeCells('D' . $row . ':E' . $row);
+        $hoja->setCellValue('F' . $row, number_format((float)$ot->total_general, 2));
+        $hoja->getStyle('D' . $row . ':F' . $row)->applyFromArray($borderThin);
+        $hoja->getStyle('D' . $row . ':F' . $row)->getFont()->setBold(true);
+        $hoja->getStyle('D' . $row . ':E' . $row)->applyFromArray($right);
+
+        $fileName = 'OrdenTrabajoOficial_' . $ot->id . '.xlsx';
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header('Content-Disposition: attachment;filename="' . $fileName . '"');
+        header('Cache-Control: max-age=0');
+        $writer = new Xlsx($libro);
+        $writer->save('php://output');
+        exit;
     }
 }
