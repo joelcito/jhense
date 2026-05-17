@@ -38,4 +38,19 @@ class OrdenRecepcion extends Model
     {
         return $this->belongsTo(Auto::class, 'auto_id');
     }
+
+    public function usuarioCreador()
+    {
+        return $this->belongsTo(User::class, 'usuario_creador_id');
+    }
+
+    public function usuarioModificador()
+    {
+        return $this->belongsTo(User::class, 'usuario_modificador_id');
+    }
+
+    public function cotizacion()
+    {
+        return $this->hasOne(Cotizacion::class, 'orden_recepcion_id');
+    }
 }

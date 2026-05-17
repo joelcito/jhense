@@ -126,8 +126,8 @@
                                         <td>{{ $label }}</td>
                                         <td width="30%">
                                             <select class="form-control form-control-sm" name="checklist[{{ $key }}]" id="checklist_{{ $key }}">
-                                                <option value="v">v</option>
-                                                <option value="X">X</option>
+                                                <option value="SI">SI</option>
+                                                <option value="NO">NO</option>
                                                 <option value="N/A" selected>N/A</option>
                                             </select>
                                         </td>
@@ -145,8 +145,8 @@
                                         <td>{{ $label }}</td>
                                         <td width="30%">
                                             <select class="form-control form-control-sm" name="checklist[{{ $key }}]" id="checklist_{{ $key }}">
-                                                <option value="v">v</option>
-                                                <option value="X">X</option>
+                                                <option value="SI">SI</option>
+                                                <option value="NO">NO</option>
                                                 <option value="N/A" selected>N/A</option>
                                             </select>
                                         </td>
@@ -279,12 +279,19 @@
                     $('#listaOrdenesRecepcion').hide();
                     $('#contenedorFormularioOrden').fadeIn();
 
-                    // Llenar datos de solo lectura para el Formulario 2
+                    // Llenar datos de solo lectura para el Formulario 2 y 3
                     let autoText = $('#auto_id option:selected').text();
                     $('#diag_vehiculo_readonly').val(autoText.trim());
+                    $('#form3_vehiculo_readonly').val(autoText.trim());
                     
                     // Cargar Formulario 2 (Diagnóstico)
                     cargarDatosDiagnostico(orden.id);
+
+                    // Cargar Formulario 3 (Formulario Diagnóstico)
+                    cargarDatosFormularioDiagnostico(orden.id);
+                    
+                    // Cargar Formulario 4 (Cotización)
+                    cargarDatosCotizacion(orden);
                     
                     // Mostrar tab 1 por defecto
                     $('#pills-form1-tab').tab('show');

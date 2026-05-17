@@ -113,15 +113,26 @@ Route::middleware('auth')->group(function () {
         Route::post('/importarServiciosExcel', [GrupoClienteController::class, 'importarServiciosExcel'])->name('grupoCliente.importarServiciosExcel');
         Route::post('/guardarOrdenRecepcion', [GrupoClienteController::class, 'guardarOrdenRecepcion'])->name('grupoCliente.guardarOrdenRecepcion');
         Route::post('/obtenerOrdenRecepcion', [GrupoClienteController::class, 'obtenerOrdenRecepcion'])->name('grupoCliente.obtenerOrdenRecepcion');
-        
+
         Route::post('/guardarInformeDiagnostico', [GrupoClienteController::class, 'guardarInformeDiagnostico'])->name('grupoCliente.guardarInformeDiagnostico');
         Route::post('/obtenerInformeDiagnostico', [GrupoClienteController::class, 'obtenerInformeDiagnostico'])->name('grupoCliente.obtenerInformeDiagnostico');
+
+        Route::post('/guardarFormularioDiagnostico', [GrupoClienteController::class, 'guardarFormularioDiagnostico'])->name('grupoCliente.guardarFormularioDiagnostico');
+        Route::post('/obtenerFormularioDiagnostico', [GrupoClienteController::class, 'obtenerFormularioDiagnostico'])->name('grupoCliente.obtenerFormularioDiagnostico');
+
+        Route::post('/guardarCotizacion', [GrupoClienteController::class, 'guardarCotizacion'])->name('grupoCliente.guardarCotizacion');
+        Route::post('/obtenerCotizacion', [GrupoClienteController::class, 'obtenerCotizacion'])->name('grupoCliente.obtenerCotizacion');
+        Route::get('/descargarPdfCotizacion/{id}', [GrupoClienteController::class, 'descargarPdfCotizacion'])->name('grupoCliente.descargarPdfCotizacion');
+        Route::get('/descargarExcelCotizacion/{id}', [GrupoClienteController::class, 'descargarExcelCotizacion'])->name('grupoCliente.descargarExcelCotizacion');
 
         Route::get('/descargarPdfOrdenRecepcion/{id}', [GrupoClienteController::class, 'descargarPdfOrdenRecepcion'])->name('grupoCliente.descargarPdfOrdenRecepcion');
         Route::get('/descargarExcelOrdenRecepcion/{id}', [GrupoClienteController::class, 'descargarExcelOrdenRecepcion'])->name('grupoCliente.descargarExcelOrdenRecepcion');
 
         Route::get('/descargarPdfInformeDiagnostico/{id}', [GrupoClienteController::class, 'descargarPdfInformeDiagnostico'])->name('grupoCliente.descargarPdfInformeDiagnostico');
         Route::get('/descargarExcelInformeDiagnostico/{id}', [GrupoClienteController::class, 'descargarExcelInformeDiagnostico'])->name('grupoCliente.descargarExcelInformeDiagnostico');
+
+        Route::get('/descargarPdfFormularioDiagnostico/{id}', [GrupoClienteController::class, 'descargarPdfFormularioDiagnostico'])->name('grupoCliente.descargarPdfFormularioDiagnostico');
+        Route::get('/descargarExcelFormularioDiagnostico/{id}', [GrupoClienteController::class, 'descargarExcelFormularioDiagnostico'])->name('grupoCliente.descargarExcelFormularioDiagnostico');
     });
 });
 

@@ -5,6 +5,10 @@ namespace App\Http\Controllers;
 use App\Models\Cliente;
 use App\Models\ClienteServicio;
 use App\Models\Consulta;
+use App\Models\Cotizacion;
+use App\Models\OrdenTrabajo;
+use App\Models\FormularioDiagnostico;
+use App\Models\FormularioOrden;
 use App\Models\Grupo;
 use App\Models\GrupoCliente;
 use App\Models\InformeDiagnostico;
@@ -112,19 +116,27 @@ class GrupoClienteController extends Controller
     //DETALLE
     public function detalle($grupo_cliente_id)
     {
-        $grupoCliente = GrupoCliente::with('cliente.autos.marca')->find($grupo_cliente_id);
+        $grupoCliente = GrupoCliente::with(['cliente.autos.marca', 'servicios'])->find($grupo_cliente_id);
         $sucursal = Sucursal::find($grupoCliente->cliente->sucursal_id);
         $grupo = Grupo::find($grupoCliente->grupo_id);
 
-        $ordenesRecepcion = OrdenRecepcion::where('grupo_cliente_id', $grupo_cliente_id)->get();
+        // Catálogo improvisado de servicios (todos los únicos registrados en el sistema)
+        $catalogoServicios = ClienteServicio::select('nombre', 'categoria', 'unidad_medida', 'costo')
+            ->whereNotNull('nombre')
+            ->groupBy('nombre', 'categoria', 'unidad_medida', 'costo')
+            ->get();
 
         // Obtener mecánicos de la sucursal (rol_id = 4)
         $mecanicos = User::where('sucursal_id', $sucursal->id)->where('rol_id', 4)->get();
 
         // Obtener consultas para el autocompletado de diagnóstico
+        $ordenesRecepcion = OrdenRecepcion::with(['usuarioCreador', 'usuarioModificador', 'auto.marca'])
+            ->where('grupo_cliente_id', $grupo_cliente_id)
+            ->get();
+
         $consultas = Consulta::where('estado', 'ACTIVO')->orWhereNull('estado')->get();
 
-        return view('grupoCliente.detalle', compact('sucursal', 'grupo', 'grupoCliente', 'ordenesRecepcion', 'mecanicos', 'consultas'));
+        return view('grupoCliente.detalle', compact('grupoCliente', 'sucursal', 'grupo', 'ordenesRecepcion', 'mecanicos', 'consultas', 'catalogoServicios'));
     }
 
     public function ajaxDetalle(Request $request)
@@ -862,5 +874,559 @@ class GrupoClienteController extends Controller
         $writer = new Xlsx($libro);
         $writer->save('php://output');
         exit;
+    }
+
+    public function guardarFormularioDiagnostico(Request $request)
+    {
+        if ($request->ajax()) {
+            $form_id = $request->input('formulario_diagnostico_id');
+            $usuario = Auth::user();
+
+            if ($form_id) {
+                $form = FormularioDiagnostico::find($form_id);
+                $form->usuario_modificador_id = $usuario->id;
+            } else {
+                $form = new FormularioDiagnostico();
+                $form->usuario_creador_id = $usuario->id;
+                $form->orden_recepcion_id = $request->input('orden_recepcion_id');
+            }
+
+            $form->responsable_vehiculo = $request->input('responsable_vehiculo');
+            $form->vehiculo_asignado_a = $request->input('vehiculo_asignado_a');
+            $form->recepcion_taller = $request->input('recepcion_taller');
+
+            // Sanitize arrays (remove empty values)
+            $prev = array_values(array_filter($request->input('preventivos', []), 'strlen'));
+            $corr = array_values(array_filter($request->input('correctivos', []), 'strlen'));
+            $otro = array_values(array_filter($request->input('otros', []), 'strlen'));
+
+            $form->servicios_preventivos = json_encode($prev);
+            $form->servicios_correctivos = json_encode($corr);
+            $form->servicios_otros = json_encode($otro);
+
+            $form->save();
+
+            return response()->json([
+                'estado' => true,
+                'formulario_diagnostico_id' => $form->id
+            ]);
+        }
+        return response()->json(['estado' => false]);
+    }
+
+    public function obtenerFormularioDiagnostico(Request $request)
+    {
+        if ($request->ajax()) {
+            $orden_id = $request->input('orden_recepcion_id');
+            $form = FormularioDiagnostico::where('orden_recepcion_id', $orden_id)->first();
+
+            $orden = OrdenRecepcion::find($orden_id);
+            $checklist = $orden ? (is_string($orden->checklist) ? json_decode($orden->checklist, true) : $orden->checklist) : null;
+
+            if ($form) {
+                $form->servicios_preventivos = is_string($form->servicios_preventivos) ? json_decode($form->servicios_preventivos, true) : $form->servicios_preventivos;
+                $form->servicios_correctivos = is_string($form->servicios_correctivos) ? json_decode($form->servicios_correctivos, true) : $form->servicios_correctivos;
+                $form->servicios_otros = is_string($form->servicios_otros) ? json_decode($form->servicios_otros, true) : $form->servicios_otros;
+
+                return response()->json(['estado' => true, 'formulario' => $form, 'checklist' => $checklist]);
+            }
+
+            // Si no hay form, devolvemos checklist de todos modos para que el panel derecho se arme
+            return response()->json(['estado' => true, 'formulario' => null, 'checklist' => $checklist]);
+        }
+        return response()->json(['estado' => false]);
+    }
+
+    public function descargarPdfFormularioDiagnostico($orden_id)
+    {
+        $form = FormularioDiagnostico::where('orden_recepcion_id', $orden_id)->firstOrFail();
+        $orden = OrdenRecepcion::with(['auto.marca', 'grupoCliente.cliente'])->findOrFail($orden_id);
+
+        $pdf = Pdf::loadView('grupoCliente.formularios.pdfFormularioDiagnostico', compact('form', 'orden'));
+
+        return $pdf->download('Formulario_Diagnostico_' . $form->id . '.pdf');
+    }
+
+    public function descargarExcelFormularioDiagnostico($orden_id)
+    {
+        $form = FormularioDiagnostico::where('orden_recepcion_id', $orden_id)->firstOrFail();
+        $orden = OrdenRecepcion::with(['auto.marca', 'grupoCliente.cliente'])->findOrFail($orden_id);
+
+        $libro = new Spreadsheet();
+        $hoja = $libro->getActiveSheet();
+        $hoja->setTitle('Formulario Diagnóstico');
+
+        // Estilos
+        $bold = ['font' => ['bold' => true]];
+        $center = ['alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER, 'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER]];
+        $borderThin = [
+            'borders' => [
+                'allBorders' => [
+                    'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+                ],
+            ],
+        ];
+
+        // Dimensiones
+        $hoja->getColumnDimension('A')->setWidth(20);
+        $hoja->getColumnDimension('B')->setWidth(30);
+        $hoja->getColumnDimension('C')->setWidth(20);
+        $hoja->getColumnDimension('D')->setWidth(30);
+        $hoja->getColumnDimension('E')->setWidth(5);
+        $hoja->getColumnDimension('F')->setWidth(30);
+        $hoja->getColumnDimension('G')->setWidth(10);
+
+        // Header
+        $hoja->setCellValue('A1', 'JHENSE');
+        $hoja->mergeCells('A1:B2');
+        $hoja->getStyle('A1:B2')->applyFromArray($center)->applyFromArray($bold)->applyFromArray($borderThin);
+
+        $hoja->setCellValue('C1', "FORMULARIO PARA DIAGNOSTICO DE\nMANTENIMIENTO DE VEHICULOS");
+        $hoja->mergeCells('C1:D2');
+        $hoja->getStyle('C1:D2')->applyFromArray($center)->applyFromArray($bold)->applyFromArray($borderThin);
+        $hoja->getStyle('C1')->getAlignment()->setWrapText(true);
+
+        $hoja->setCellValue('E1', 'RG-01-B-PP-1-DAC/UTR-2 CITE: 001');
+        $hoja->mergeCells('E1:G1');
+        $hoja->getStyle('E1:G1')->applyFromArray($center)->applyFromArray($borderThin);
+
+        $hoja->setCellValue('E2', 'SCZ, ' . \Carbon\Carbon::parse($form->created_at)->format('d \d\e F \d\e Y'));
+        $hoja->mergeCells('E2:G2');
+        $hoja->getStyle('E2:G2')->applyFromArray($center)->applyFromArray($borderThin);
+
+        $hoja->setCellValue('A3', 'DIRECCION DE ADMINISTRACION CORPORATIVA – DAC');
+        $hoja->mergeCells('A3:G3');
+        $hoja->getStyle('A3')->applyFromArray($center)->applyFromArray($bold)->applyFromArray($borderThin)->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setARGB('FFD9D9D9');
+
+        // General Data
+        $hoja->setCellValue('A4', 'DATOS GENERALES');
+        $hoja->mergeCells('A4:G4');
+        $hoja->getStyle('A4:G4')->applyFromArray($bold)->applyFromArray($borderThin);
+
+        $hoja->setCellValue('A5', 'RESPONSABLE DE VEHICULO');
+        $hoja->setCellValue('B5', $form->responsable_vehiculo);
+        $hoja->mergeCells('B5:G5');
+
+        $hoja->setCellValue('A6', 'VEHICULO ASIGNADO A');
+        $hoja->setCellValue('B6', $form->vehiculo_asignado_a);
+        $hoja->mergeCells('B6:G6');
+
+        $hoja->getStyle('A5:G6')->applyFromArray($borderThin);
+
+        // Vehicle Data
+        $hoja->setCellValue('A7', 'CARACTERISTICAS DEL VEHICULO');
+        $hoja->mergeCells('A7:G7');
+        $hoja->getStyle('A7:G7')->applyFromArray($bold)->applyFromArray($borderThin);
+
+        $hoja->setCellValue('A8', 'AÑO');
+        $hoja->setCellValue('B8', $orden->auto->anio ?? '');
+        $hoja->setCellValue('C8', 'MARCA');
+        $hoja->setCellValue('D8', $orden->auto->marca->nombre ?? '');
+
+        $hoja->setCellValue('A9', 'CLASE');
+        $hoja->setCellValue('B9', $orden->tipo_unidad ?? '');
+        $hoja->setCellValue('C9', 'PLACA');
+        $hoja->setCellValue('D9', $orden->auto->placa ?? '');
+
+        $hoja->setCellValue('A10', 'TIPO');
+        $hoja->setCellValue('B10', $orden->auto->tipo ?? '');
+        $hoja->setCellValue('C10', 'MODELO');
+        $hoja->setCellValue('D10', $orden->auto->modelo ?? '');
+
+        $hoja->setCellValue('A11', 'Km/Mlls');
+        $hoja->setCellValue('B11', $orden->kilometraje ?? '');
+        $hoja->setCellValue('C11', 'MOTOR');
+        $hoja->setCellValue('D11', $orden->auto->nro_motor ?? '');
+
+        $hoja->setCellValue('C12', 'CHASIS');
+        $hoja->setCellValue('D12', $orden->auto->nro_chasis ?? '');
+
+        $hoja->getStyle('A8:D12')->applyFromArray($borderThin);
+
+        // Requerimiento Servicio & Inventario Header
+        $hoja->setCellValue('A14', 'REQUERIMIENTO DE SERVICIO');
+        $hoja->mergeCells('A14:D14');
+        $hoja->getStyle('A14:D14')->applyFromArray($center)->applyFromArray($bold)->applyFromArray($borderThin)->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setARGB('FFD9D9D9');
+
+        $hoja->setCellValue('F14', 'INVENTARIO');
+        $hoja->mergeCells('F14:G14');
+        $hoja->getStyle('F14:G14')->applyFromArray($center)->applyFromArray($bold)->applyFromArray($borderThin)->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setARGB('FFD9D9D9');
+
+        // Preventivos
+        $row = 15;
+        $hoja->setCellValue('A' . $row, 'Mantenimiento Preventivo');
+        $hoja->mergeCells('A' . $row . ':D' . $row);
+        $hoja->getStyle('A' . $row . ':D' . $row)->applyFromArray($bold)->applyFromArray($borderThin);
+        $row++;
+
+        $preventivos = is_string($form->servicios_preventivos) ? json_decode($form->servicios_preventivos, true) : $form->servicios_preventivos;
+        if (!is_array($preventivos) || count($preventivos) == 0) $preventivos = array_fill(0, 5, '');
+
+        foreach ($preventivos as $index => $item) {
+            $hoja->setCellValue('A' . $row, $index + 1);
+            $hoja->setCellValue('B' . $row, $item);
+            $hoja->mergeCells('B' . $row . ':D' . $row);
+            $hoja->getStyle('A' . $row . ':D' . $row)->applyFromArray($borderThin);
+            $hoja->getStyle('A' . $row)->applyFromArray($center)->applyFromArray($bold);
+            $row++;
+        }
+
+        // Correctivos
+        $hoja->setCellValue('A' . $row, 'Mantenimiento Correctivo');
+        $hoja->mergeCells('A' . $row . ':D' . $row);
+        $hoja->getStyle('A' . $row . ':D' . $row)->applyFromArray($bold)->applyFromArray($borderThin);
+        $row++;
+
+        $correctivos = is_string($form->servicios_correctivos) ? json_decode($form->servicios_correctivos, true) : $form->servicios_correctivos;
+        if (!is_array($correctivos) || count($correctivos) == 0) $correctivos = array_fill(0, 5, '');
+
+        foreach ($correctivos as $index => $item) {
+            $hoja->setCellValue('A' . $row, $index + 1);
+            $hoja->setCellValue('B' . $row, $item);
+            $hoja->mergeCells('B' . $row . ':D' . $row);
+            $hoja->getStyle('A' . $row . ':D' . $row)->applyFromArray($borderThin);
+            $hoja->getStyle('A' . $row)->applyFromArray($center)->applyFromArray($bold);
+            $row++;
+        }
+
+        // Otros
+        $hoja->setCellValue('A' . $row, 'Otros servicios requeridos');
+        $hoja->mergeCells('A' . $row . ':D' . $row);
+        $hoja->getStyle('A' . $row . ':D' . $row)->applyFromArray($bold)->applyFromArray($borderThin);
+        $row++;
+
+        $otros = is_string($form->servicios_otros) ? json_decode($form->servicios_otros, true) : $form->servicios_otros;
+        if (!is_array($otros) || count($otros) == 0) $otros = array_fill(0, 4, '');
+
+        foreach ($otros as $index => $item) {
+            $hoja->setCellValue('A' . $row, $index + 1);
+            $hoja->setCellValue('B' . $row, $item);
+            $hoja->mergeCells('B' . $row . ':D' . $row);
+            $hoja->getStyle('A' . $row . ':D' . $row)->applyFromArray($borderThin);
+            $hoja->getStyle('A' . $row)->applyFromArray($center)->applyFromArray($bold);
+            $row++;
+        }
+
+        // Firmas (left side)
+        $hoja->setCellValue('A' . $row, "Solicita y Valida\nResponsable del Vehículo:\n\n\n\n");
+        $hoja->mergeCells('A' . $row . ':B' . ($row + 3));
+        $hoja->setCellValue('C' . $row, "Verifica y Aprueba\nFiscal de Servicio:\n\n\n\n");
+        $hoja->mergeCells('C' . $row . ':D' . ($row + 3));
+
+        $hoja->getStyle('A' . $row . ':D' . ($row + 3))->applyFromArray($borderThin)->applyFromArray($center);
+        $hoja->getStyle('A' . $row . ':D' . ($row + 3))->getAlignment()->setWrapText(true);
+
+        // Inventario (Right side, starting from row 15)
+        $invRow = 15;
+        $checklist = is_string($orden->checklist) ? json_decode($orden->checklist, true) : $orden->checklist;
+        if (!is_array($checklist)) $checklist = [];
+
+        foreach ($checklist as $key => $val) {
+            if ($key !== 'firma_entrega') {
+                $hoja->setCellValue('F' . $invRow, ucfirst(str_replace('_', ' ', $key)));
+                $hoja->setCellValue('G' . $invRow, $val);
+                $hoja->getStyle('F' . $invRow . ':G' . $invRow)->applyFromArray($borderThin);
+                $hoja->getStyle('G' . $invRow)->applyFromArray($center)->applyFromArray($bold);
+                $invRow++;
+            }
+        }
+
+        // Recepcion Taller
+        $invRow++;
+        $hoja->setCellValue('F' . $invRow, 'Recepción del Taller');
+        $hoja->mergeCells('F' . $invRow . ':G' . $invRow);
+        $hoja->getStyle('F' . $invRow . ':G' . $invRow)->applyFromArray($center)->applyFromArray($bold)->applyFromArray($borderThin)->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setARGB('FFD9D9D9');
+        $invRow++;
+
+        $hoja->setCellValue('F' . $invRow, $form->recepcion_taller ?? '');
+        $hoja->mergeCells('F' . $invRow . ':G' . ($invRow + 4));
+        $hoja->getStyle('F' . $invRow . ':G' . ($invRow + 4))->applyFromArray($borderThin);
+        $hoja->getStyle('F' . $invRow)->getAlignment()->setWrapText(true)->setVertical(\PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_TOP);
+
+
+        $fileName = 'Formulario_Diagnostico_' . $form->id . '.xlsx';
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header('Content-Disposition: attachment;filename="' . $fileName . '"');
+        header('Cache-Control: max-age=0');
+
+        $writer = new Xlsx($libro);
+        $writer->save('php://output');
+        exit;
+    }
+
+    public function guardarCotizacion(Request $request)
+    {
+        if ($request->ajax()) {
+            $cotizacion_id = $request->input('cotizacion_id');
+            $usuario = Auth::user();
+
+            if ($cotizacion_id) {
+                $cotizacion = Cotizacion::find($cotizacion_id);
+                $cotizacion->usuario_modificador_id = $usuario->id;
+            } else {
+                $cotizacion = new Cotizacion();
+                $cotizacion->usuario_creador_id = $usuario->id;
+                $cotizacion->orden_recepcion_id = $request->input('orden_recepcion_id');
+            }
+
+            $cotizacion->servicio_taller = $request->input('servicio_taller');
+            $cotizacion->fecha_salida = $request->input('fecha_salida');
+            $cotizacion->dias_habiles = $request->input('dias_habiles');
+
+            // Arrays
+            $prevs = array_values($request->input('preventivos', []));
+            $corrs = array_values($request->input('correctivos', []));
+            $reps = array_values($request->input('repuestos', []));
+
+            $cotizacion->preventivos = json_encode($prevs);
+            $cotizacion->correctivos = json_encode($corrs);
+            $cotizacion->repuestos = json_encode($reps);
+
+            $cotizacion->subtotal_preventivos = $request->input('subtotal_preventivos', 0);
+            $cotizacion->subtotal_correctivos = $request->input('subtotal_correctivos', 0);
+            $cotizacion->subtotal_repuestos = $request->input('subtotal_repuestos', 0);
+            $cotizacion->total_general = $request->input('total_general', 0);
+
+            $cotizacion->save();
+
+            return response()->json([
+                'estado' => true,
+                'cotizacion_id' => $cotizacion->id
+            ]);
+        }
+        return response()->json(['estado' => false]);
+    }
+
+    public function obtenerCotizacion(Request $request)
+    {
+        if ($request->ajax()) {
+            $orden_id = $request->input('orden_recepcion_id');
+            $cotizacion = Cotizacion::where('orden_recepcion_id', $orden_id)->first();
+            $orden = OrdenRecepcion::find($orden_id);
+
+            if ($cotizacion && $orden) {
+                $cotizacion = $this->reagruparCotizacion($cotizacion, $orden->grupo_cliente_id);
+                return response()->json(['estado' => true, 'cotizacion' => $cotizacion]);
+            }
+            return response()->json(['estado' => true, 'cotizacion' => null]);
+        }
+        return response()->json(['estado' => false]);
+    }
+
+    public function descargarPdfCotizacion($orden_id)
+    {
+        $cotizacion = Cotizacion::where('orden_recepcion_id', $orden_id)->firstOrFail();
+        $orden = OrdenRecepcion::with(['auto.marca', 'grupoCliente.cliente'])->findOrFail($orden_id);
+
+        $cotizacion = $this->reagruparCotizacion($cotizacion, $orden->grupo_cliente_id);
+
+        $pdf = Pdf::loadView('grupoCliente.formularios.pdfCotizacion', compact('cotizacion', 'orden'));
+
+        return $pdf->download('Cotizacion_' . $cotizacion->id . '.pdf');
+    }
+
+    public function descargarExcelCotizacion($orden_id)
+    {
+        $cotizacion = Cotizacion::where('orden_recepcion_id', $orden_id)->firstOrFail();
+        $orden = OrdenRecepcion::with(['auto.marca', 'grupoCliente.cliente'])->findOrFail($orden_id);
+
+        $cotizacion = $this->reagruparCotizacion($cotizacion, $orden->grupo_cliente_id);
+
+        $libro = new Spreadsheet();
+        $hoja = $libro->getActiveSheet();
+        $hoja->setTitle('Cotización');
+
+        // Styles
+        $borderThin = [
+            'borders' => ['allBorders' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN]]
+        ];
+        $headerStyle = [
+            'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
+            'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => '003366']],
+            'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER]
+        ];
+        $titleStyle = [
+            'font' => ['bold' => true, 'size' => 14],
+            'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER]
+        ];
+        $center = ['alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER]];
+        $right = ['alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_RIGHT]];
+
+        // Column widths
+        $hoja->getColumnDimension('A')->setWidth(10);
+        $hoja->getColumnDimension('B')->setWidth(40);
+        $hoja->getColumnDimension('C')->setWidth(15);
+        $hoja->getColumnDimension('D')->setWidth(15);
+        $hoja->getColumnDimension('E')->setWidth(15);
+        $hoja->getColumnDimension('F')->setWidth(15);
+
+        // Title
+        $hoja->setCellValue('A1', 'COTIZACIÓN');
+        $hoja->mergeCells('A1:F1');
+        $hoja->getStyle('A1')->applyFromArray($titleStyle);
+
+        // Header Information
+        $hoja->setCellValue('A3', 'VEHÍCULOS:');
+        $hoja->setCellValue('B3', ($orden->auto->marca->nombre ?? '') . ' ' . ($orden->auto->modelo ?? ''));
+        $hoja->setCellValue('E3', 'ORDEN DE SERVICIO N°');
+        $hoja->setCellValue('F3', $orden->id);
+
+        $hoja->setCellValue('A4', 'PLACAS:');
+        $hoja->setCellValue('B4', $orden->auto->placa ?? '');
+        $hoja->setCellValue('E4', 'KILOMETRAJE ACTUAL:');
+        $hoja->setCellValue('F4', $orden->kilometraje ?? '');
+
+        $hoja->setCellValue('A5', 'EMPRESA:');
+        $hoja->setCellValue('B5', ($orden->grupoCliente->cliente->nombres ?? '') . ' ' . ($orden->grupoCliente->cliente->ap_paterno ?? ''));
+        $hoja->setCellValue('E5', 'FECHA DE INGRESO:');
+        $hoja->setCellValue('F5', \Carbon\Carbon::parse($orden->created_at)->format('Y-m-d'));
+
+        $hoja->setCellValue('A6', 'SERVICIO/TALLER:');
+        $hoja->setCellValue('B6', $cotizacion->servicio_taller);
+        $hoja->setCellValue('E6', 'FECHA DE SALIDA:');
+        $hoja->setCellValue('F6', $cotizacion->fecha_salida);
+
+        $hoja->setCellValue('E7', 'Días Hábiles:');
+        $hoja->setCellValue('F7', $cotizacion->dias_habiles);
+
+        $row = 9;
+
+        $preventivos = is_string($cotizacion->preventivos) ? json_decode($cotizacion->preventivos, true) : $cotizacion->preventivos;
+        $correctivos = is_string($cotizacion->correctivos) ? json_decode($cotizacion->correctivos, true) : $cotizacion->correctivos;
+        $repuestos = is_string($cotizacion->repuestos) ? json_decode($cotizacion->repuestos, true) : $cotizacion->repuestos;
+
+        $sections = [
+            ['title' => 'MANTENIMIENTO PREVENTIVO', 'data' => $preventivos, 'subtotal' => $cotizacion->subtotal_preventivos],
+            ['title' => 'MANTENIMIENTO CORRECTIVO', 'data' => $correctivos, 'subtotal' => $cotizacion->subtotal_correctivos],
+            ['title' => 'REPUESTOS DE VEHÍCULOS', 'data' => $repuestos, 'subtotal' => $cotizacion->subtotal_repuestos]
+        ];
+
+        foreach ($sections as $section) {
+            $hoja->setCellValue('A' . $row, 'ITEM');
+            $hoja->setCellValue('B' . $row, $section['title']);
+            $hoja->setCellValue('C' . $row, 'Cantidad');
+            $hoja->setCellValue('D' . $row, 'Unidad');
+            $hoja->setCellValue('E' . $row, 'Precio Uni.');
+            $hoja->setCellValue('F' . $row, 'TOTAL');
+
+            $hoja->getStyle('A' . $row . ':F' . $row)->applyFromArray($headerStyle);
+            $startRow = $row;
+            $row++;
+
+            if (is_array($section['data']) && count($section['data']) > 0) {
+                foreach ($section['data'] as $item) {
+                    $hoja->setCellValue('A' . $row, $item['item'] ?? '');
+                    $hoja->setCellValue('B' . $row, $item['nombre'] ?? '');
+                    $hoja->setCellValue('C' . $row, $item['cantidad'] ?? 0);
+                    $hoja->setCellValue('D' . $row, $item['unidad_medida'] ?? '');
+                    $hoja->setCellValue('E' . $row, number_format((float)($item['costo'] ?? 0), 2));
+                    $hoja->setCellValue('F' . $row, number_format((float)($item['total'] ?? 0), 2));
+
+                    $hoja->getStyle('C' . $row . ':F' . $row)->applyFromArray($center);
+                    $hoja->getStyle('E' . $row . ':F' . $row)->applyFromArray($right);
+                    $row++;
+                }
+            } else {
+                $hoja->setCellValue('A' . $row, '');
+                $hoja->setCellValue('B' . $row, 'Sin registros');
+                $hoja->mergeCells('B' . $row . ':F' . $row);
+                $row++;
+            }
+
+            $hoja->setCellValue('A' . $row, 'Sub. TOTAL');
+            $hoja->mergeCells('A' . $row . ':E' . $row);
+            $hoja->setCellValue('F' . $row, number_format((float)$section['subtotal'], 2));
+            $hoja->getStyle('A' . $row . ':F' . $row)->getFont()->setBold(true);
+            $hoja->getStyle('A' . $row . ':E' . $row)->applyFromArray($right);
+
+            $hoja->getStyle('A' . $startRow . ':F' . $row)->applyFromArray($borderThin);
+            $row += 2;
+        }
+
+        $row++;
+        $hoja->setCellValue('D' . $row, 'SUMA TOTAL Bs.');
+        $hoja->mergeCells('D' . $row . ':E' . $row);
+        $hoja->setCellValue('F' . $row, number_format((float)$cotizacion->total_general, 2));
+        $hoja->getStyle('D' . $row . ':F' . $row)->applyFromArray($borderThin);
+        $hoja->getStyle('D' . $row . ':F' . $row)->getFont()->setBold(true);
+        $hoja->getStyle('D' . $row . ':E' . $row)->applyFromArray($right);
+
+        $fileName = 'Cotizacion_' . $cotizacion->id . '.xlsx';
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header('Content-Disposition: attachment;filename="' . $fileName . '"');
+        header('Cache-Control: max-age=0');
+
+        $writer = new Xlsx($libro);
+        $writer->save('php://output');
+        exit;
+    }
+
+    private function reagruparCotizacion($cotizacion, $grupo_cliente_id)
+    {
+        $preventivos = is_string($cotizacion->preventivos) ? json_decode($cotizacion->preventivos, true) : $cotizacion->preventivos;
+        $correctivos = is_string($cotizacion->correctivos) ? json_decode($cotizacion->correctivos, true) : $cotizacion->correctivos;
+        $repuestos = is_string($cotizacion->repuestos) ? json_decode($cotizacion->repuestos, true) : $cotizacion->repuestos;
+
+        $serviciosGrup = ClienteServicio::where('grupo_cliente_id', $grupo_cliente_id)->get();
+
+        $todosLosGuardados = array_merge((array)$preventivos, (array)$correctivos, (array)$repuestos);
+
+        $nuevosPrev = [];
+        $nuevosCorr = [];
+        $nuevosRep = [];
+
+        $subPrev = 0;
+        $subCorr = 0;
+        $subRep = 0;
+
+        foreach ($todosLosGuardados as $srv) {
+            if (!is_array($srv)) continue;
+
+            $catActual = 'OTROS';
+            $srvBusqueda = null;
+
+            if (!empty($srv['item'])) {
+                $srvBusqueda = $serviciosGrup->where('item', $srv['item'])->first();
+            }
+            if (!$srvBusqueda && !empty($srv['nombre'])) {
+                $srvBusqueda = $serviciosGrup->where('nombre', $srv['nombre'])->first();
+            }
+
+            if ($srvBusqueda) {
+                $catActual = strtoupper($srvBusqueda->categoria);
+            }
+
+            if ($catActual == 'PREVENTIVO') {
+                $nuevosPrev[] = $srv;
+                $subPrev += floatval($srv['total'] ?? 0);
+            } elseif ($catActual == 'CORRECTIVO') {
+                $nuevosCorr[] = $srv;
+                $subCorr += floatval($srv['total'] ?? 0);
+            } else {
+                $nuevosRep[] = $srv;
+                $subRep += floatval($srv['total'] ?? 0);
+            }
+        }
+
+        $cotizacion->preventivos = $nuevosPrev;
+        $cotizacion->correctivos = $nuevosCorr;
+        $cotizacion->repuestos = $nuevosRep;
+        $cotizacion->subtotal_preventivos = $subPrev;
+        $cotizacion->subtotal_correctivos = $subCorr;
+        $cotizacion->subtotal_repuestos = $subRep;
+        $cotizacion->total_general = $subPrev + $subCorr + $subRep;
+
+        // Auto-guardar la actualización si lo deseas, o solo devolverla
+        $cotizacion->preventivos = json_encode($nuevosPrev);
+        $cotizacion->correctivos = json_encode($nuevosCorr);
+        $cotizacion->repuestos = json_encode($nuevosRep);
+        $cotizacion->save();
+
+        // Para el uso en json/vista devolvemos como arrays
+        $cotizacion->preventivos = $nuevosPrev;
+        $cotizacion->correctivos = $nuevosCorr;
+        $cotizacion->repuestos = $nuevosRep;
+
+        return $cotizacion;
     }
 }

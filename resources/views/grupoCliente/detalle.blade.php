@@ -187,6 +187,12 @@
                         <li class="nav-item">
                             <a class="nav-link" id="pills-form2-tab" data-toggle="pill" href="#pills-form2" role="tab" aria-controls="pills-form2" aria-selected="false">2. Diagnóstico</a>
                         </li>
+                        <li class="nav-item">
+                            <a class="nav-link" id="pills-form3-tab" data-toggle="pill" href="#pills-form3" role="tab" aria-controls="pills-form3" aria-selected="false">3. Formulario Diagnóstico</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" id="pills-form4-tab" data-toggle="pill" href="#pills-form4" role="tab" aria-controls="pills-form4" aria-selected="false">4. Cotización</a>
+                        </li>
                         <!-- Aquí se agregarán los demás formularios -->
                     </ul>
                     
@@ -199,6 +205,16 @@
                         <!-- FORM 2: DIAGNÓSTICO -->
                         <div class="tab-pane fade" id="pills-form2" role="tabpanel" aria-labelledby="pills-form2-tab">
                             @include('grupoCliente.formularios.informeDiagnostico')
+                        </div>
+
+                        <!-- FORM 3: FORMULARIO DIAGNOSTICO -->
+                        <div class="tab-pane fade" id="pills-form3" role="tabpanel" aria-labelledby="pills-form3-tab">
+                            @include('grupoCliente.formularios.formularioDiagnostico')
+                        </div>
+                        
+                        <!-- FORM 4: COTIZACION -->
+                        <div class="tab-pane fade" id="pills-form4" role="tabpanel" aria-labelledby="pills-form4-tab">
+                            @include('grupoCliente.formularios.cotizacion')
                         </div>
                     </div>
                 </div>
@@ -231,6 +247,11 @@
                 dropdownParent: $('#modalGrupo'),
                 width: '100%'
             });
+        });
+
+        $('#cotiz_buscador_servicios').select2({
+            placeholder: 'Seleccione...',
+            width: '100%'
         });
 
         ajaxListado();
