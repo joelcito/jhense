@@ -199,6 +199,12 @@
                         <li class="nav-item">
                             <a class="nav-link" id="pills-form6-tab" data-toggle="pill" href="#pills-form6" role="tab" aria-controls="pills-form6" aria-selected="false">6. Form. Autorización</a>
                         </li>
+                        <li class="nav-item">
+                            <a class="nav-link" id="pills-form7-tab" data-toggle="pill" href="#pills-form7" role="tab" aria-controls="pills-form7" aria-selected="false">7. Recepción Repuestos</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" id="pills-form8-tab" data-toggle="pill" href="#pills-form8" role="tab" aria-controls="pills-form8" aria-selected="false">8. Form. Fotográfico</a>
+                        </li>
                         <!-- Aquí se agregarán los demás formularios -->
                     </ul>
                     
@@ -231,6 +237,16 @@
                         <!-- FORM 7: FORMULARIO DE AUTORIZACIÓN -->
                         <div class="tab-pane fade" id="pills-form6" role="tabpanel" aria-labelledby="pills-form6-tab">
                             @include('grupoCliente.formularios.formularioAutorizacion')
+                        </div>
+
+                        <!-- FORM 8: RECEPCIÓN DE REPUESTOS -->
+                        <div class="tab-pane fade" id="pills-form7" role="tabpanel" aria-labelledby="pills-form7-tab">
+                            @include('grupoCliente.formularios.recepcionRepuesto')
+                        </div>
+
+                        <!-- FORM 9: FORMULARIO FOTOGRÁFICO -->
+                        <div class="tab-pane fade" id="pills-form8" role="tabpanel" aria-labelledby="pills-form8-tab">
+                            @include('grupoCliente.formularios.reporteFotografico')
                         </div>
                     </div>
                 </div>

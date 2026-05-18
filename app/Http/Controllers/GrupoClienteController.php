@@ -8,6 +8,8 @@ use App\Models\Consulta;
 use App\Models\Cotizacion;
 use App\Models\OrdenTrabajo;
 use App\Models\FormularioAutorizacion;
+use App\Models\RecepcionRepuesto;
+use App\Models\ReporteFotografico;
 use App\Models\FormularioDiagnostico;
 use App\Models\Grupo;
 use App\Models\GrupoCliente;
@@ -510,7 +512,7 @@ class GrupoClienteController extends Controller
     {
         if ($request->ajax()) {
             $orden_id = $request->input('orden_recepcion_id');
-            $orden = OrdenRecepcion::find($orden_id);
+            $orden = OrdenRecepcion::with(['auto.marca'])->find($orden_id);
             if ($orden) {
                 return response()->json(['estado' => true, 'orden' => $orden]);
             }
@@ -1616,7 +1618,7 @@ class GrupoClienteController extends Controller
 
             $ot->save();
 
-            $numStr = 'SCZ-TGM-OT-' . $ot->numero_orden_secuencial . '/' . $ot->anio;
+            $numStr = $ot->numero_orden_secuencial . '/' . $ot->anio;
 
             return response()->json([
                 'estado' => true,
@@ -1999,7 +2001,7 @@ class GrupoClienteController extends Controller
         $ot = OrdenTrabajo::where('orden_recepcion_id', $fa->orden_recepcion_id)->first();
         $numOt = '';
         if ($ot) {
-            $numOt = 'SCZ-TGM-OT-' . $ot->numero_orden_secuencial . '/' . $ot->anio;
+            $numOt = $ot->numero_orden_secuencial . '/' . $ot->anio;
         }
 
         $libro = new Spreadsheet();
@@ -2158,6 +2160,500 @@ class GrupoClienteController extends Controller
         header('Content-Disposition: attachment;filename="' . $fileName . '"');
         header('Cache-Control: max-age=0');
         $writer = new Xlsx($libro);
+        $writer->save('php://output');
+        exit;
+    }
+
+    /* ============================================================
+     * FORMULARIO 8 — RECEPCIÓN DE REPUESTOS
+     * ============================================================ */
+
+    public function guardarRecepcionRepuesto(Request $request)
+    {
+        if ($request->ajax()) {
+            $rr_id = $request->input('recepcion_repuesto_id');
+            $usuario = Auth::user();
+            $orden_recepcion_id = $request->input('orden_recepcion_id');
+
+            if ($rr_id) {
+                $rr = RecepcionRepuesto::find($rr_id);
+                $rr->usuario_modificador_id = $usuario->id;
+            } else {
+                $rr = new RecepcionRepuesto();
+                $rr->usuario_creador_id = $usuario->id;
+                $rr->orden_recepcion_id = $orden_recepcion_id;
+            }
+
+            $rr->fecha = $request->input('fecha');
+            $rr->observaciones = $request->input('observaciones');
+
+            $repuestosRaw = $request->input('repuestos', []);
+            $repuestosProc = [];
+            foreach ($repuestosRaw as $r) {
+                $r['ocultar_reporte'] = isset($r['ocultar_reporte']) && $r['ocultar_reporte'] == '1' ? true : false;
+                $repuestosProc[] = $r;
+            }
+            $rr->repuestos = json_encode($repuestosProc);
+
+            $rr->save();
+
+            return response()->json([
+                'estado' => true,
+                'rr_id' => $rr->id
+            ]);
+        }
+        return response()->json(['estado' => false]);
+    }
+
+    public function obtenerRecepcionRepuesto(Request $request)
+    {
+        if ($request->ajax()) {
+            $orden_id = $request->input('orden_recepcion_id');
+
+            $rr = RecepcionRepuesto::where('orden_recepcion_id', $orden_id)->first();
+
+            // Get Order for sequential number display
+            $ot = OrdenTrabajo::where('orden_recepcion_id', $orden_id)->first();
+            $numOt = '';
+            if ($ot) {
+                $numOt = $ot->numero_orden_secuencial . '/' . $ot->anio;
+            }
+
+            if ($rr) {
+                $rr->repuestos = is_string($rr->repuestos) ? json_decode($rr->repuestos, true) : $rr->repuestos;
+                return response()->json(['estado' => true, 'rr' => $rr, 'cotizacion' => null, 'num_ot' => $numOt]);
+            }
+
+            // No existe, leemos los items de Cotizacion (SOLO REPUESTOS)
+            $cotizacion = Cotizacion::where('orden_recepcion_id', $orden_id)->first();
+
+            if ($cotizacion) {
+                $orden = OrdenRecepcion::find($orden_id);
+                $cotizacion = $this->reagruparCotizacion($cotizacion, $orden->grupo_cliente_id);
+
+                $reps  = is_string($cotizacion->repuestos) ? json_decode($cotizacion->repuestos, true) : $cotizacion->repuestos;
+                $serviciosGrup = ClienteServicio::where('grupo_cliente_id', $orden->grupo_cliente_id)->get();
+
+                $solo_repuestos = [];
+
+                if (is_array($reps)) {
+                    foreach ($reps as $srv) {
+                        if (!is_array($srv)) continue;
+
+                        $srv['ocultar_reporte'] = false;
+                        $solo_repuestos[] = $srv;
+                    }
+                }
+
+                return response()->json(['estado' => true, 'rr' => null, 'cotizacion_reps' => $solo_repuestos, 'num_ot' => $numOt]);
+            }
+
+            return response()->json(['estado' => true, 'rr' => null, 'cotizacion_reps' => [], 'num_ot' => $numOt]);
+        }
+        return response()->json(['estado' => false]);
+    }
+
+    public function descargarPdfRecepcionRepuesto($id)
+    {
+        $rr = RecepcionRepuesto::findOrFail($id);
+        $orden = OrdenRecepcion::with(['auto.marca', 'grupoCliente.cliente'])->findOrFail($rr->orden_recepcion_id);
+
+        $repuestos = is_string($rr->repuestos) ? json_decode($rr->repuestos, true) : $rr->repuestos;
+        $repuestosVisible = array_filter($repuestos, function ($r) {
+            return !isset($r['ocultar_reporte']) || $r['ocultar_reporte'] == false;
+        });
+
+        $ot = OrdenTrabajo::where('orden_recepcion_id', $rr->orden_recepcion_id)->first();
+        $numOt = '';
+        if ($ot) {
+            $numOt = $ot->numero_orden_secuencial . '/' . $ot->anio;
+        }
+
+        $pdf = Pdf::loadView('grupoCliente.formularios.pdfRecepcionRepuesto', compact('rr', 'orden', 'repuestosVisible', 'numOt'));
+        return $pdf->download('RecepcionRepuesto_' . $rr->id . '.pdf');
+    }
+
+    public function descargarExcelRecepcionRepuesto($id)
+    {
+        $rr = RecepcionRepuesto::findOrFail($id);
+        $orden = OrdenRecepcion::with(['auto.marca', 'grupoCliente.cliente'])->findOrFail($rr->orden_recepcion_id);
+
+        $repuestos = is_string($rr->repuestos) ? json_decode($rr->repuestos, true) : $rr->repuestos;
+        $repuestosVisible = array_filter($repuestos, function ($r) {
+            return !isset($r['ocultar_reporte']) || $r['ocultar_reporte'] == false;
+        });
+
+        $ot = OrdenTrabajo::where('orden_recepcion_id', $rr->orden_recepcion_id)->first();
+        $numOt = '';
+        if ($ot) {
+            $numOt = $ot->numero_orden_secuencial . '/' . $ot->anio;
+        }
+
+        $libro = new Spreadsheet();
+        $hoja  = $libro->getActiveSheet();
+        $hoja->setTitle('Recepción Repuestos');
+
+        $borderThin  = ['borders' => ['allBorders' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN]]];
+        $headerStyle = [
+            'font'      => ['bold' => true, 'color' => ['rgb' => '000000']],
+            'fill'      => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => 'D9D9D9']],
+            'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER],
+        ];
+        $center = ['alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER]];
+
+        $hoja->getColumnDimension('A')->setWidth(8);
+        $hoja->getColumnDimension('B')->setWidth(50);
+        $hoja->getColumnDimension('C')->setWidth(15);
+        $hoja->getColumnDimension('D')->setWidth(15);
+
+        $hoja->setCellValue('A2', 'FORMULARIO DE RECEPCIÓN DE REPUESTOS Y ACCESORIOS USADOS');
+        $hoja->mergeCells('A2:C4');
+        $hoja->getStyle('A2')->getFont()->setBold(true)->setSize(11);
+        $hoja->getStyle('A2')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+        $hoja->getStyle('A2')->getAlignment()->setVertical(\PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER);
+        $hoja->getStyle('A2')->getAlignment()->setWrapText(true);
+        $hoja->getStyle('A2:C4')->applyFromArray($borderThin);
+
+        $hoja->setCellValue('D2', 'RG-03-B-PP-1-DAC/UTR-2');
+        $hoja->mergeCells('D2:D4');
+        $hoja->getStyle('D2')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+        $hoja->getStyle('D2')->getAlignment()->setVertical(\PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER);
+        $hoja->getStyle('D2:D4')->applyFromArray($borderThin);
+
+        $hoja->setCellValue('A6', 'FECHA');
+        $hoja->setCellValue('B6', $rr->fecha ?? '');
+        $hoja->setCellValue('C6', 'Form.de Mant.');
+        $hoja->setCellValue('D6', $numOt);
+
+        $hoja->setCellValue('A7', 'DATOS DEL VEHÍCULO');
+        $hoja->mergeCells('A7:D7');
+        $hoja->getStyle('A7')->getFont()->setBold(true);
+        $hoja->getStyle('A7')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+
+        $hoja->setCellValue('A8', 'MARCA');
+        $hoja->setCellValue('B8', $orden->auto->marca->nombre ?? '');
+        $hoja->setCellValue('C8', 'PLACA');
+        $hoja->setCellValue('D8', $orden->auto->placa ?? '');
+
+        $hoja->setCellValue('A9', 'CLASE');
+        $hoja->setCellValue('B9', $orden->auto->modelo ?? '');
+        $hoja->setCellValue('C9', 'TIPO');
+        $hoja->setCellValue('D9', '');
+
+        $hoja->getStyle('A6:D9')->applyFromArray($borderThin);
+        $hoja->getStyle('A6')->getFont()->setBold(true);
+        $hoja->getStyle('C6')->getFont()->setBold(true);
+        $hoja->getStyle('A8:A9')->getFont()->setBold(true);
+        $hoja->getStyle('C8:C9')->getFont()->setBold(true);
+
+        $row = 11;
+        $hoja->setCellValue('A' . $row, 'DETALLE');
+        $hoja->mergeCells('A' . $row . ':D' . $row);
+        $hoja->getStyle('A' . $row)->getFont()->setBold(true)->setSize(12);
+        $hoja->getStyle('A' . $row)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+        $hoja->getStyle('A' . $row . ':D' . $row)->applyFromArray($borderThin);
+        $row++;
+
+        $hoja->setCellValue('A' . $row, 'Llenar la siguiente información, en caso de no adjuntar el detalle de repuestos emitido por el taller mecánico');
+        $hoja->mergeCells('A' . $row . ':D' . $row);
+        $hoja->getStyle('A' . $row)->getFont()->setSize(9);
+        $hoja->getStyle('A' . $row . ':D' . $row)->applyFromArray($borderThin);
+        $row++;
+
+        $hoja->setCellValue('A' . $row, 'N°');
+        $hoja->setCellValue('B' . $row, 'REPUESTOS');
+        $hoja->setCellValue('C' . $row, 'CANT.');
+        $hoja->setCellValue('D' . $row, 'UNIDAD');
+
+        $hoja->getStyle('A' . $row . ':D' . $row)->applyFromArray($headerStyle);
+        $row++;
+
+        if (count($repuestosVisible) > 0) {
+            $cont = 1;
+            foreach ($repuestosVisible as $item) {
+                $hoja->setCellValue('A' . $row, $cont);
+                $hoja->setCellValue('B' . $row, $item['nombre'] ?? '');
+                $hoja->setCellValue('C' . $row, $item['cantidad'] ?? 0);
+                $hoja->setCellValue('D' . $row, $item['unidad_medida'] ?? '');
+
+                $hoja->getStyle('A' . $row . ':D' . $row)->applyFromArray($borderThin);
+                $hoja->getStyle('A' . $row)->applyFromArray($center);
+                $hoja->getStyle('C' . $row . ':D' . $row)->applyFromArray($center);
+                $row++;
+                $cont++;
+            }
+        } else {
+            $hoja->setCellValue('A' . $row, '');
+            $hoja->setCellValue('B' . $row, 'Sin registros visibles');
+            $hoja->mergeCells('B' . $row . ':D' . $row);
+            $hoja->getStyle('A' . $row . ':D' . $row)->applyFromArray($borderThin);
+            $row++;
+        }
+
+        $row += 2;
+        $hoja->setCellValue('A' . $row, 'OBSERVACIONES');
+        $hoja->mergeCells('A' . $row . ':D' . $row);
+        $hoja->getStyle('A' . $row)->getFont()->setBold(true);
+        $row++;
+
+        $hoja->setCellValue('A' . $row, $rr->observaciones ?? '');
+        $hoja->mergeCells('A' . $row . ':D' . ($row + 3));
+        $hoja->getStyle('A' . ($row - 1) . ':D' . ($row + 3))->applyFromArray($borderThin);
+        $hoja->getStyle('A' . $row)->getAlignment()->setWrapText(true);
+        $hoja->getStyle('A' . $row)->getAlignment()->setVertical(\PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_TOP);
+        $row += 4;
+
+        $fileName = 'RecepcionRepuesto_' . $rr->id . '.xlsx';
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header('Content-Disposition: attachment;filename="' . $fileName . '"');
+        header('Cache-Control: max-age=0');
+        $writer = new Xlsx($libro);
+        $writer->save('php://output');
+        exit;
+    }
+
+    /* ============================================================
+     * FORMULARIO 9 — REPORTE FOTOGRÁFICO
+     * ============================================================ */
+
+    public function guardarReporteFotografico(Request $request)
+    {
+        if ($request->ajax()) {
+            $rf_id = $request->input('reporte_id');
+            $usuario = Auth::user();
+            $orden_recepcion_id = $request->input('orden_recepcion_id');
+
+            if ($rf_id) {
+                $rf = ReporteFotografico::find($rf_id);
+                $rf->usuario_modificador_id = $usuario->id;
+            } else {
+                $rf = new ReporteFotografico();
+                $rf->usuario_creador_id = $usuario->id;
+                $rf->orden_recepcion_id = $orden_recepcion_id;
+            }
+
+            $rf->fecha = $request->input('fecha');
+            $rf->objeto_contratacion = $request->input('objeto_contratacion');
+
+            $filasData = $request->input('filas', []);
+            $archivos = $request->file('filas_archivos', []);
+
+            $filasProcessed = [];
+
+            foreach ($filasData as $index => $filaRow) {
+                $foto1Path = $filaRow['path_foto1'] ?? '';
+                $foto2Path = $filaRow['path_foto2'] ?? '';
+                $foto3Path = $filaRow['path_foto3'] ?? '';
+
+                if (isset($archivos[$index])) {
+                    if (isset($archivos[$index]['foto1'])) {
+                        $foto1Path = $archivos[$index]['foto1']->store('fotos_reporte', 'public');
+                    }
+                    if (isset($archivos[$index]['foto2'])) {
+                        $foto2Path = $archivos[$index]['foto2']->store('fotos_reporte', 'public');
+                    }
+                    if (isset($archivos[$index]['foto3'])) {
+                        $foto3Path = $archivos[$index]['foto3']->store('fotos_reporte', 'public');
+                    }
+                }
+
+                $filasProcessed[] = [
+                    'foto1' => $foto1Path,
+                    'foto2' => $foto2Path,
+                    'foto3' => $foto3Path,
+                    'descripcion' => $filaRow['descripcion'] ?? ''
+                ];
+            }
+
+            $rf->filas = json_encode($filasProcessed);
+            $rf->save();
+
+            return response()->json([
+                'estado' => true,
+                'rf_id' => $rf->id
+            ]);
+        }
+        return response()->json(['estado' => false]);
+    }
+
+    public function obtenerReporteFotografico(Request $request)
+    {
+        if ($request->ajax()) {
+            $orden_id = $request->input('orden_recepcion_id');
+
+            $rf = ReporteFotografico::where('orden_recepcion_id', $orden_id)->first();
+            $ot = OrdenTrabajo::where('orden_recepcion_id', $orden_id)->first();
+            $numOt = '';
+            if ($ot) {
+                $numOt = $ot->numero_orden_secuencial . '/' . $ot->anio;
+            }
+
+            if ($rf) {
+                $rf->filas = is_string($rf->filas) ? json_decode($rf->filas, true) : $rf->filas;
+                return response()->json(['estado' => true, 'rf' => $rf, 'num_ot' => $numOt]);
+            }
+
+            return response()->json(['estado' => true, 'rf' => null, 'num_ot' => $numOt]);
+        }
+        return response()->json(['estado' => false]);
+    }
+
+    public function descargarPdfReporteFotografico($id)
+    {
+        $rf = ReporteFotografico::findOrFail($id);
+        $orden = OrdenRecepcion::with(['auto.marca', 'grupoCliente.cliente'])->findOrFail($rf->orden_recepcion_id);
+
+        $filas = is_string($rf->filas) ? json_decode($rf->filas, true) : $rf->filas;
+
+        $ot = OrdenTrabajo::where('orden_recepcion_id', $rf->orden_recepcion_id)->first();
+        $numOt = '';
+        if ($ot) {
+            $numOt = $ot->numero_orden_secuencial . '/' . $ot->anio;
+        }
+
+        $pdf = Pdf::loadView('grupoCliente.formularios.pdfReporteFotografico', compact('rf', 'orden', 'filas', 'numOt'));
+        // Necesitamos que reconozca los src de public/storage
+        $pdf->getDomPDF()->setHttpContext(
+            stream_context_create([
+                'ssl' => [
+                    'verify_peer' => FALSE,
+                    'verify_peer_name' => FALSE,
+                    'allow_self_signed' => TRUE
+                ]
+            ])
+        );
+
+        return $pdf->download('ReporteFotografico_' . $rf->id . '.pdf');
+    }
+
+    public function descargarExcelReporteFotografico($id)
+    {
+        // En reportes con imágenes, el Excel es complejo. Generamos el básico con datos.
+        // O lo informamos si prefiere que no sea exportable a Excel si es muy complejo.
+        // Pero el requerimiento general pide Excel.
+        // Vamos a incluir las fotos como Drawing si existen.
+
+        $rf = ReporteFotografico::findOrFail($id);
+        $orden = OrdenRecepcion::with(['auto.marca', 'grupoCliente.cliente'])->findOrFail($rf->orden_recepcion_id);
+
+        $filas = is_string($rf->filas) ? json_decode($rf->filas, true) : $rf->filas;
+        $ot = OrdenTrabajo::where('orden_recepcion_id', $rf->orden_recepcion_id)->first();
+        $numOt = '';
+        if ($ot) {
+            $numOt = $ot->numero_orden_secuencial . '/' . $ot->anio;
+        }
+
+        $libro = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $hoja  = $libro->getActiveSheet();
+        $hoja->setTitle('Reporte Fotográfico');
+
+        $borderThin  = ['borders' => ['allBorders' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN]]];
+
+        $hoja->getColumnDimension('A')->setWidth(15);
+        $hoja->getColumnDimension('B')->setWidth(20);
+        $hoja->getColumnDimension('C')->setWidth(20);
+        $hoja->getColumnDimension('D')->setWidth(15);
+        $hoja->getColumnDimension('E')->setWidth(20);
+        $hoja->getColumnDimension('F')->setWidth(20);
+
+        // Header
+        $hoja->setCellValue('C2', 'REPORTE FOTOGRÁFICO');
+        $hoja->mergeCells('C2:D4');
+        $hoja->getStyle('C2')->getFont()->setBold(true)->setSize(16)->getColor()->setARGB('00003366');
+        $hoja->getStyle('C2')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+        $hoja->getStyle('C2')->getAlignment()->setVertical(\PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER);
+        $hoja->getStyle('C2:D4')->applyFromArray($borderThin);
+
+        $hoja->setCellValue('A6', 'N° de Orden:');
+        $hoja->setCellValue('B6', $numOt);
+        $hoja->setCellValue('D6', 'Fecha:');
+        $hoja->setCellValue('E6', $rf->fecha ?? '');
+
+        $cliente = $orden->grupoCliente->cliente ?? null;
+        $hoja->setCellValue('A7', 'Empresa/ Cliente:');
+        $hoja->setCellValue('B7', $cliente->nombre_razon_social ?? '');
+        $hoja->setCellValue('D7', 'NIT/ C.I.:');
+        $hoja->setCellValue('E7', $cliente->nit_ci ?? '');
+
+        $hoja->setCellValue('A8', 'Contacto de ref.:');
+        $hoja->setCellValue('B8', $cliente->contacto_referencia ?? '');
+        $hoja->setCellValue('D8', 'Telefono/ Correo:');
+        $hoja->setCellValue('E8', $cliente->telefono_celular ?? '');
+
+        $hoja->setCellValue('A9', 'Placa/ Chasis:');
+        $hoja->setCellValue('B9', $orden->auto->placa ?? '');
+        $hoja->setCellValue('D9', 'Kilometraje:');
+        $hoja->setCellValue('E9', $orden->kilometraje ?? '');
+
+        $hoja->setCellValue('A10', 'Clase de vehiculo:');
+        $hoja->setCellValue('B10', $orden->auto->modelo ?? '');
+        $hoja->setCellValue('D10', 'Objeto de la contratacion:');
+        $hoja->setCellValue('E10', $rf->objeto_contratacion ?? '');
+
+        $hoja->setCellValue('A11', 'Marca/ Tipo:');
+        $hoja->setCellValue('B11', $orden->auto->marca->nombre ?? '');
+        $hoja->setCellValue('D11', 'Direccion de cliente:');
+        $hoja->setCellValue('E11', $cliente->direccion ?? '');
+
+        $row = 13;
+        $hoja->setCellValue('A' . $row, 'REPORTE FOTOGRAFICO DEL VEHICULO:');
+        $hoja->getStyle('A' . $row)->getFont()->setBold(true);
+        $row++;
+
+        $hoja->setCellValue('A' . $row, 'De acuerdo a ingreso y salida de vehiculo motorizado con placa de control detallado en el presente documento, a continuacion se detalla visualmente las diferentes etapas de un servicio, repuestos y accesorios cambiados:');
+        $hoja->mergeCells('A' . $row . ':F' . ($row + 1));
+        $hoja->getStyle('A' . $row)->getAlignment()->setWrapText(true);
+        $row += 2;
+
+        if ($filas && count($filas) > 0) {
+            foreach ($filas as $f) {
+                $hoja->setCellValue('A' . $row, 'DETALLE: ' . ($f['descripcion'] ?? ''));
+                $hoja->mergeCells('A' . $row . ':F' . $row);
+                $hoja->getStyle('A' . $row)->getFont()->setBold(true);
+                $row++;
+
+                $rowHeights = 100;
+                $hoja->getRowDimension($row)->setRowHeight($rowHeights);
+
+                if (!empty($f['foto1']) && file_exists(storage_path('app/public/' . $f['foto1']))) {
+                    $drawing = new \PhpOffice\PhpSpreadsheet\Worksheet\Drawing();
+                    $drawing->setName('Foto1');
+                    $drawing->setDescription('Foto 1');
+                    $drawing->setPath(storage_path('app/public/' . $f['foto1']));
+                    $drawing->setHeight(120);
+                    $drawing->setCoordinates('B' . $row);
+                    $drawing->setWorksheet($hoja);
+                }
+
+                if (!empty($f['foto2']) && file_exists(storage_path('app/public/' . $f['foto2']))) {
+                    $drawing = new \PhpOffice\PhpSpreadsheet\Worksheet\Drawing();
+                    $drawing->setName('Foto2');
+                    $drawing->setDescription('Foto 2');
+                    $drawing->setPath(storage_path('app/public/' . $f['foto2']));
+                    $drawing->setHeight(120);
+                    $drawing->setCoordinates('D' . $row);
+                    $drawing->setWorksheet($hoja);
+                }
+
+                if (!empty($f['foto3']) && file_exists(storage_path('app/public/' . $f['foto3']))) {
+                    $drawing = new \PhpOffice\PhpSpreadsheet\Worksheet\Drawing();
+                    $drawing->setName('Foto3');
+                    $drawing->setDescription('Foto 3');
+                    $drawing->setPath(storage_path('app/public/' . $f['foto3']));
+                    $drawing->setHeight(120);
+                    $drawing->setCoordinates('F' . $row);
+                    $drawing->setWorksheet($hoja);
+                }
+
+                $row += 2;
+            }
+        }
+
+        $fileName = 'ReporteFotografico_' . $rf->id . '.xlsx';
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header('Content-Disposition: attachment;filename="' . $fileName . '"');
+        header('Cache-Control: max-age=0');
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($libro);
         $writer->save('php://output');
         exit;
     }

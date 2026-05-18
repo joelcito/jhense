@@ -138,6 +138,16 @@ Route::middleware('auth')->group(function () {
         Route::get('/descargarPdfFormularioAutorizacion/{id}', [GrupoClienteController::class, 'descargarPdfFormularioAutorizacion'])->name('grupoCliente.descargarPdfFormularioAutorizacion');
         Route::get('/descargarExcelFormularioAutorizacion/{id}', [GrupoClienteController::class, 'descargarExcelFormularioAutorizacion'])->name('grupoCliente.descargarExcelFormularioAutorizacion');
 
+        Route::post('/guardarRecepcionRepuesto', [GrupoClienteController::class, 'guardarRecepcionRepuesto'])->name('grupoCliente.guardarRecepcionRepuesto');
+        Route::post('/obtenerRecepcionRepuesto', [GrupoClienteController::class, 'obtenerRecepcionRepuesto'])->name('grupoCliente.obtenerRecepcionRepuesto');
+        Route::get('/descargarPdfRecepcionRepuesto/{id}', [GrupoClienteController::class, 'descargarPdfRecepcionRepuesto'])->name('grupoCliente.descargarPdfRecepcionRepuesto');
+        Route::get('/descargarExcelRecepcionRepuesto/{id}', [GrupoClienteController::class, 'descargarExcelRecepcionRepuesto'])->name('grupoCliente.descargarExcelRecepcionRepuesto');
+
+        Route::post('/guardarReporteFotografico', [GrupoClienteController::class, 'guardarReporteFotografico'])->name('grupoCliente.guardarReporteFotografico');
+        Route::post('/obtenerReporteFotografico', [GrupoClienteController::class, 'obtenerReporteFotografico'])->name('grupoCliente.obtenerReporteFotografico');
+        Route::get('/descargarPdfReporteFotografico/{id}', [GrupoClienteController::class, 'descargarPdfReporteFotografico'])->name('grupoCliente.descargarPdfReporteFotografico');
+        Route::get('/descargarExcelReporteFotografico/{id}', [GrupoClienteController::class, 'descargarExcelReporteFotografico'])->name('grupoCliente.descargarExcelReporteFotografico');
+
         Route::get('/descargarPdfOrdenRecepcion/{id}', [GrupoClienteController::class, 'descargarPdfOrdenRecepcion'])->name('grupoCliente.descargarPdfOrdenRecepcion');
         Route::get('/descargarExcelOrdenRecepcion/{id}', [GrupoClienteController::class, 'descargarExcelOrdenRecepcion'])->name('grupoCliente.descargarExcelOrdenRecepcion');
 

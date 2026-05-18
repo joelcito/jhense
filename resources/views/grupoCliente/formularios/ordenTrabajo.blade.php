@@ -189,16 +189,6 @@
 </div>
 
 <script>
-    $(document).ready(function() {
-        if ($('#oto_buscador_servicios').length > 0) {
-            $('#oto_buscador_servicios').select2({
-                placeholder: "-- Seleccione un servicio para agregarlo --",
-                allowClear: true,
-                width: 'resolve'
-            });
-        }
-    });
-
     function agregarFilaOto(tablaId, arrName, item_data = null) {
         let tbody = $('#' + tablaId + ' tbody');
         let index = tbody.find('tr').length;

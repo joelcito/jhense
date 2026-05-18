@@ -299,6 +299,12 @@
                     // Cargar Formulario 7 (Autorización)
                     cargarDatosFormularioAutorizacion(orden);
                     
+                    // Cargar Formulario 8 (Recepción de Repuestos)
+                    cargarDatosRecepcionRepuesto(orden);
+                    
+                    // Cargar Formulario 9 (Reporte Fotográfico)
+                    cargarDatosReporteFotografico(orden);
+                    
                     // Mostrar tab 1 por defecto
                     $('#pills-form1-tab').tab('show');
                     $('#tituloOrdenActual').text('EDITANDO ORDEN DE TRABAJO N° ' + orden.id);
