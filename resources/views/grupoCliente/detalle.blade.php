@@ -196,6 +196,9 @@
                         <li class="nav-item">
                             <a class="nav-link" id="pills-form5-tab" data-toggle="pill" href="#pills-form5" role="tab" aria-controls="pills-form5" aria-selected="false">5. Orden de Trabajo</a>
                         </li>
+                        <li class="nav-item">
+                            <a class="nav-link" id="pills-form6-tab" data-toggle="pill" href="#pills-form6" role="tab" aria-controls="pills-form6" aria-selected="false">6. Form. Autorización</a>
+                        </li>
                         <!-- Aquí se agregarán los demás formularios -->
                     </ul>
                     
@@ -223,6 +226,11 @@
                         <!-- FORM 5/6: ORDEN DE TRABAJO OFICIAL -->
                         <div class="tab-pane fade" id="pills-form5" role="tabpanel" aria-labelledby="pills-form5-tab">
                             @include('grupoCliente.formularios.ordenTrabajo')
+                        </div>
+
+                        <!-- FORM 7: FORMULARIO DE AUTORIZACIÓN -->
+                        <div class="tab-pane fade" id="pills-form6" role="tabpanel" aria-labelledby="pills-form6-tab">
+                            @include('grupoCliente.formularios.formularioAutorizacion')
                         </div>
                     </div>
                 </div>

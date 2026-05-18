@@ -296,6 +296,9 @@
                     // Cargar Formulario 6 (Orden de Trabajo Oficial)
                     cargarDatosOrdenTrabajo(orden);
                     
+                    // Cargar Formulario 7 (Autorización)
+                    cargarDatosFormularioAutorizacion(orden);
+                    
                     // Mostrar tab 1 por defecto
                     $('#pills-form1-tab').tab('show');
                     $('#tituloOrdenActual').text('EDITANDO ORDEN DE TRABAJO N° ' + orden.id);

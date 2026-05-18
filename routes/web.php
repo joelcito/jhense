@@ -133,6 +133,11 @@ Route::middleware('auth')->group(function () {
         Route::get('/descargarPdfOrdenTrabajoOficial/{id}', [GrupoClienteController::class, 'descargarPdfOrdenTrabajoOficial'])->name('grupoCliente.descargarPdfOrdenTrabajoOficial');
         Route::get('/descargarExcelOrdenTrabajoOficial/{id}', [GrupoClienteController::class, 'descargarExcelOrdenTrabajoOficial'])->name('grupoCliente.descargarExcelOrdenTrabajoOficial');
 
+        Route::post('/guardarFormularioAutorizacion', [GrupoClienteController::class, 'guardarFormularioAutorizacion'])->name('grupoCliente.guardarFormularioAutorizacion');
+        Route::post('/obtenerFormularioAutorizacion', [GrupoClienteController::class, 'obtenerFormularioAutorizacion'])->name('grupoCliente.obtenerFormularioAutorizacion');
+        Route::get('/descargarPdfFormularioAutorizacion/{id}', [GrupoClienteController::class, 'descargarPdfFormularioAutorizacion'])->name('grupoCliente.descargarPdfFormularioAutorizacion');
+        Route::get('/descargarExcelFormularioAutorizacion/{id}', [GrupoClienteController::class, 'descargarExcelFormularioAutorizacion'])->name('grupoCliente.descargarExcelFormularioAutorizacion');
+
         Route::get('/descargarPdfOrdenRecepcion/{id}', [GrupoClienteController::class, 'descargarPdfOrdenRecepcion'])->name('grupoCliente.descargarPdfOrdenRecepcion');
         Route::get('/descargarExcelOrdenRecepcion/{id}', [GrupoClienteController::class, 'descargarExcelOrdenRecepcion'])->name('grupoCliente.descargarExcelOrdenRecepcion');
 

@@ -7,8 +7,8 @@ use App\Models\ClienteServicio;
 use App\Models\Consulta;
 use App\Models\Cotizacion;
 use App\Models\OrdenTrabajo;
+use App\Models\FormularioAutorizacion;
 use App\Models\FormularioDiagnostico;
-use App\Models\FormularioOrden;
 use App\Models\Grupo;
 use App\Models\GrupoCliente;
 use App\Models\InformeDiagnostico;
@@ -990,7 +990,7 @@ class GrupoClienteController extends Controller
         $hoja->mergeCells('E1:G1');
         $hoja->getStyle('E1:G1')->applyFromArray($center)->applyFromArray($borderThin);
 
-        $hoja->setCellValue('E2', 'SCZ, ' . \Carbon\Carbon::parse($form->created_at)->format('d \d\e F \d\e Y'));
+        $hoja->setCellValue('E2', 'SCZ, ' . Carbon::parse($form->created_at)->format('d \d\e F \d\e Y'));
         $hoja->mergeCells('E2:G2');
         $hoja->getStyle('E2:G2')->applyFromArray($center)->applyFromArray($borderThin);
 
@@ -1279,7 +1279,7 @@ class GrupoClienteController extends Controller
         $hoja->setCellValue('A5', 'EMPRESA:');
         $hoja->setCellValue('B5', ($orden->grupoCliente->cliente->nombres ?? '') . ' ' . ($orden->grupoCliente->cliente->ap_paterno ?? ''));
         $hoja->setCellValue('E5', 'FECHA DE INGRESO:');
-        $hoja->setCellValue('F5', \Carbon\Carbon::parse($orden->created_at)->format('Y-m-d'));
+        $hoja->setCellValue('F5', Carbon::parse($orden->created_at)->format('Y-m-d'));
 
         $hoja->setCellValue('A6', 'SERVICIO/TALLER:');
         $hoja->setCellValue('B6', $cotizacion->servicio_taller);
@@ -1485,7 +1485,7 @@ class GrupoClienteController extends Controller
         $hoja->setCellValue('A5', 'EMPRESA :');
         $hoja->setCellValue('B5', ($orden->grupoCliente->cliente->nombres ?? '') . ' ' . ($orden->grupoCliente->cliente->ap_paterno ?? ''));
         $hoja->setCellValue('D5', 'FECHA DE INGRESO:');
-        $hoja->setCellValue('E5', \Carbon\Carbon::parse($orden->created_at)->format('Y-m-d'));
+        $hoja->setCellValue('E5', Carbon::parse($orden->created_at)->format('Y-m-d'));
         $hoja->setCellValue('A6', 'SERVICIO/TALLER:');
         $hoja->setCellValue('B6', $cotizacion->servicio_taller ?? '');
         $hoja->setCellValue('D6', 'FECHA DE SALIDA:');
@@ -1830,6 +1830,330 @@ class GrupoClienteController extends Controller
         $hoja->getStyle('D' . $row . ':E' . $row)->applyFromArray($right);
 
         $fileName = 'OrdenTrabajoOficial_' . $ot->id . '.xlsx';
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header('Content-Disposition: attachment;filename="' . $fileName . '"');
+        header('Cache-Control: max-age=0');
+        $writer = new Xlsx($libro);
+        $writer->save('php://output');
+        exit;
+    }
+
+    /* ============================================================
+     * FORMULARIO 7 — FORMULARIO DE AUTORIZACIÓN
+     * ============================================================ */
+
+    public function guardarFormularioAutorizacion(Request $request)
+    {
+        if ($request->ajax()) {
+            $fa_id = $request->input('formulario_autorizacion_id');
+            $usuario = Auth::user();
+            $orden_recepcion_id = $request->input('orden_recepcion_id');
+
+            if ($fa_id) {
+                $fa = FormularioAutorizacion::find($fa_id);
+                $fa->usuario_modificador_id = $usuario->id;
+            } else {
+                $fa = new FormularioAutorizacion();
+                $fa->usuario_creador_id = $usuario->id;
+                $fa->orden_recepcion_id = $orden_recepcion_id;
+            }
+
+            $fa->fecha = $request->input('fecha');
+            $fa->cite = $request->input('cite');
+            $fa->observaciones = $request->input('observaciones');
+
+            // Save JSON snapshot if passed (read-only from frontend but we send them to save)
+            if ($request->has('preventivo')) {
+                $fa->preventivo = json_encode(array_values($request->input('preventivo')));
+            }
+            if ($request->has('correctivo')) {
+                $fa->correctivo = json_encode(array_values($request->input('correctivo')));
+            }
+            if ($request->has('repuestos_suministros')) {
+                $fa->repuestos_suministros = json_encode(array_values($request->input('repuestos_suministros')));
+            }
+            if ($request->has('otros')) {
+                $fa->otros = json_encode(array_values($request->input('otros')));
+            }
+
+            $fa->total_general = $request->input('total_general', 0);
+
+            $fa->save();
+
+            return response()->json([
+                'estado' => true,
+                'fa_id' => $fa->id
+            ]);
+        }
+        return response()->json(['estado' => false]);
+    }
+
+    public function obtenerFormularioAutorizacion(Request $request)
+    {
+        if ($request->ajax()) {
+            $orden_id = $request->input('orden_recepcion_id');
+
+            $fa = FormularioAutorizacion::where('orden_recepcion_id', $orden_id)->first();
+            if ($fa) {
+                $fa->preventivo            = is_string($fa->preventivo)            ? json_decode($fa->preventivo, true)            : $fa->preventivo;
+                $fa->correctivo            = is_string($fa->correctivo)            ? json_decode($fa->correctivo, true)            : $fa->correctivo;
+                $fa->repuestos_suministros = is_string($fa->repuestos_suministros) ? json_decode($fa->repuestos_suministros, true) : $fa->repuestos_suministros;
+                $fa->otros                 = is_string($fa->otros)                 ? json_decode($fa->otros, true)                 : $fa->otros;
+
+                // Get Order for sequential number display
+                $ot = OrdenTrabajo::where('orden_recepcion_id', $orden_id)->first();
+                $numOt = '';
+                if ($ot) {
+                    $numOt = $ot->numero_orden_secuencial . '/' . $ot->anio;
+                }
+
+                return response()->json(['estado' => true, 'fa' => $fa, 'cotizacion' => null, 'num_ot' => $numOt]);
+            }
+
+            // No existe, leemos los items de Cotizacion para generar la vista previa
+            $cotizacion = Cotizacion::where('orden_recepcion_id', $orden_id)->first();
+            $numOt = '';
+            $ot = OrdenTrabajo::where('orden_recepcion_id', $orden_id)->first();
+            if ($ot) {
+                $numOt = $ot->numero_orden_secuencial . '/' . $ot->anio;
+            }
+
+            if ($cotizacion) {
+                $orden = OrdenRecepcion::find($orden_id);
+                $cotizacion = $this->reagruparCotizacion($cotizacion, $orden->grupo_cliente_id);
+
+                $prevs = is_string($cotizacion->preventivos) ? json_decode($cotizacion->preventivos, true) : $cotizacion->preventivos;
+                $corrs = is_string($cotizacion->correctivos) ? json_decode($cotizacion->correctivos, true) : $cotizacion->correctivos;
+                $reps  = is_string($cotizacion->repuestos) ? json_decode($cotizacion->repuestos, true) : $cotizacion->repuestos;
+
+                $serviciosGrup = ClienteServicio::where('grupo_cliente_id', $orden->grupo_cliente_id)->get();
+
+                $n_reps_sum = [];
+                $n_otros = [];
+
+                if (is_array($reps)) {
+                    foreach ($reps as $srv) {
+                        if (!is_array($srv)) continue;
+                        $catActual = 'OTROS';
+                        $srvBusqueda = null;
+
+                        if (!empty($srv['item'])) {
+                            $srvBusqueda = $serviciosGrup->where('item', $srv['item'])->first();
+                        }
+                        if (!$srvBusqueda && !empty($srv['nombre'])) {
+                            $srvBusqueda = $serviciosGrup->where('nombre', $srv['nombre'])->first();
+                        }
+                        if ($srvBusqueda) {
+                            $catActual = strtoupper($srvBusqueda->categoria);
+                        }
+
+                        if ($catActual == 'REPUESTOS' || $catActual == 'SUMINISTRO') {
+                            $n_reps_sum[] = $srv;
+                        } else {
+                            $n_otros[] = $srv;
+                        }
+                    }
+                }
+
+                $retData = [
+                    'preventivo' => $prevs,
+                    'correctivo' => $corrs,
+                    'repuestos_suministros' => $n_reps_sum,
+                    'otros' => $n_otros
+                ];
+
+                return response()->json(['estado' => true, 'fa' => null, 'cotizacion' => $retData, 'num_ot' => $numOt]);
+            }
+
+            return response()->json(['estado' => true, 'fa' => null, 'cotizacion' => null, 'num_ot' => $numOt]);
+        }
+        return response()->json(['estado' => false]);
+    }
+
+    public function descargarPdfFormularioAutorizacion($id)
+    {
+        $fa = FormularioAutorizacion::findOrFail($id);
+        $orden = OrdenRecepcion::with(['auto.marca', 'grupoCliente.cliente'])->findOrFail($fa->orden_recepcion_id);
+
+        $fa->preventivo            = is_string($fa->preventivo)            ? json_decode($fa->preventivo, true)            : $fa->preventivo;
+        $fa->correctivo            = is_string($fa->correctivo)            ? json_decode($fa->correctivo, true)            : $fa->correctivo;
+        $fa->repuestos_suministros = is_string($fa->repuestos_suministros) ? json_decode($fa->repuestos_suministros, true) : $fa->repuestos_suministros;
+        $fa->otros                 = is_string($fa->otros)                 ? json_decode($fa->otros, true)                 : $fa->otros;
+
+        $ot = OrdenTrabajo::where('orden_recepcion_id', $fa->orden_recepcion_id)->first();
+
+        $pdf = Pdf::loadView('grupoCliente.formularios.pdfFormularioAutorizacion', compact('fa', 'orden', 'ot'));
+        return $pdf->download('FormularioAutorizacion_' . $fa->id . '.pdf');
+    }
+
+    public function descargarExcelFormularioAutorizacion($id)
+    {
+        $fa = FormularioAutorizacion::findOrFail($id);
+        $orden = OrdenRecepcion::with(['auto.marca', 'grupoCliente.cliente'])->findOrFail($fa->orden_recepcion_id);
+
+        $fa->preventivo            = is_string($fa->preventivo)            ? json_decode($fa->preventivo, true)            : $fa->preventivo;
+        $fa->correctivo            = is_string($fa->correctivo)            ? json_decode($fa->correctivo, true)            : $fa->correctivo;
+        $fa->repuestos_suministros = is_string($fa->repuestos_suministros) ? json_decode($fa->repuestos_suministros, true) : $fa->repuestos_suministros;
+        $fa->otros                 = is_string($fa->otros)                 ? json_decode($fa->otros, true)                 : $fa->otros;
+
+        $ot = OrdenTrabajo::where('orden_recepcion_id', $fa->orden_recepcion_id)->first();
+        $numOt = '';
+        if ($ot) {
+            $numOt = 'SCZ-TGM-OT-' . $ot->numero_orden_secuencial . '/' . $ot->anio;
+        }
+
+        $libro = new Spreadsheet();
+        $hoja  = $libro->getActiveSheet();
+        $hoja->setTitle('Form. Autorizacion');
+
+        $borderThin  = ['borders' => ['allBorders' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN]]];
+        $headerStyle = [
+            'font'      => ['bold' => true, 'color' => ['rgb' => '000000']],
+            'fill'      => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => 'D9D9D9']],
+            'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER],
+        ];
+        $right = ['alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_RIGHT]];
+        $center = ['alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER]];
+
+        $hoja->getColumnDimension('A')->setWidth(8);
+        $hoja->getColumnDimension('B')->setWidth(50);
+        $hoja->getColumnDimension('C')->setWidth(10);
+        $hoja->getColumnDimension('D')->setWidth(10);
+        $hoja->getColumnDimension('E')->setWidth(12);
+        $hoja->getColumnDimension('F')->setWidth(14);
+
+        $hoja->setCellValue('A2', 'FORMULARIO DE AUTORIZACION DE CAMBIO DE REPUESTOS, PARTES, ACCESORIOS, SERVICIOS Y SUMINISTROS PARA VEHÍCULOS');
+        $hoja->mergeCells('A2:E4');
+        $hoja->getStyle('A2')->getFont()->setBold(true)->setSize(11);
+        $hoja->getStyle('A2')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+        $hoja->getStyle('A2')->getAlignment()->setVertical(\PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER);
+        $hoja->getStyle('A2')->getAlignment()->setWrapText(true);
+        $hoja->getStyle('A2:E4')->applyFromArray($borderThin);
+
+        $hoja->setCellValue('F2', 'RG-02-B-PP-1-DAC/UTR-2');
+        $hoja->mergeCells('F2:F4');
+        $hoja->getStyle('F2')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+        $hoja->getStyle('F2')->getAlignment()->setVertical(\PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER);
+        $hoja->getStyle('F2:F4')->applyFromArray($borderThin);
+
+        $hoja->setCellValue('A6', 'FECHA');
+        $hoja->setCellValue('B6', $fa->fecha ?? '');
+        $hoja->setCellValue('D6', 'CITE');
+        $hoja->setCellValue('E6', $fa->cite ?? '');
+        $hoja->mergeCells('E6:F6');
+
+        $hoja->setCellValue('A7', 'DATOS DEL VEHICULO');
+        $hoja->mergeCells('A7:C7');
+        $hoja->getStyle('A7')->getFont()->setBold(true);
+
+        $hoja->setCellValue('A8', 'PROPIETARIO DEL VEHICULO');
+        $hoja->mergeCells('A8:B8');
+        $hoja->setCellValue('C8', ($orden->grupoCliente->cliente->nombres ?? '') . ' ' . ($orden->grupoCliente->cliente->ap_paterno ?? ''));
+
+        $hoja->setCellValue('A9', 'MARCA');
+        $hoja->setCellValue('B9', $orden->auto->marca->nombre ?? '');
+        $hoja->setCellValue('C9', 'PLACA');
+        $hoja->setCellValue('D9', $orden->auto->placa ?? '');
+        $hoja->mergeCells('D9:F9');
+
+        $hoja->setCellValue('A10', 'CLASE');
+        $hoja->setCellValue('B10', $orden->auto->modelo ?? '');
+        $hoja->setCellValue('C10', 'TIPO');
+        $hoja->setCellValue('D10', '');
+        $hoja->mergeCells('D10:F10');
+
+        $hoja->getStyle('A6:F10')->applyFromArray($borderThin);
+        $hoja->getStyle('A6:A10')->getFont()->setBold(true);
+        $hoja->getStyle('C9:C10')->getFont()->setBold(true);
+
+        $row = 12;
+        $hoja->setCellValue('A' . $row, 'DETALLE');
+        $hoja->mergeCells('A' . $row . ':F' . $row);
+        $hoja->getStyle('A' . $row)->getFont()->setBold(true)->setSize(12);
+        $row++;
+
+        $sections = [
+            ['title' => 'Mantenimiento Preventivo', 'data' => $fa->preventivo, 'header' => 'Mano de obra'],
+            ['title' => 'Mantenimiento Correctivo', 'data' => $fa->correctivo, 'header' => 'Mano de obra'],
+            ['title' => 'Repuestos - Accesorios - Suministros', 'data' => $fa->repuestos_suministros, 'header' => 'DETALLE'],
+            ['title' => 'Otros Servicios Requeridos', 'data' => $fa->otros, 'header' => 'DETALLE'],
+        ];
+
+        $totalGral = 0;
+
+        foreach ($sections as $section) {
+            $hoja->setCellValue('A' . $row, $section['title']);
+            $hoja->mergeCells('A' . $row . ':F' . $row);
+            $hoja->getStyle('A' . $row)->applyFromArray($headerStyle);
+            $startRow = $row;
+            $row++;
+
+            $hoja->setCellValue('A' . $row, 'ITEM');
+            $hoja->setCellValue('B' . $row, $section['header']);
+            $hoja->setCellValue('C' . $row, 'CANT.');
+            $hoja->setCellValue('D' . $row, 'UNID.');
+            $hoja->setCellValue('E' . $row, 'P/UNIT.');
+            $hoja->setCellValue('F' . $row, 'TOTAL');
+
+            $hoja->getStyle('A' . $row . ':F' . $row)->applyFromArray($headerStyle);
+            $row++;
+
+            $subtotal = 0;
+
+            if (is_array($section['data']) && count($section['data']) > 0) {
+                foreach ($section['data'] as $item) {
+                    $hoja->setCellValue('A' . $row, $item['item'] ?? '');
+                    $hoja->setCellValue('B' . $row, $item['nombre'] ?? '');
+                    $hoja->setCellValue('C' . $row, $item['cantidad'] ?? 0);
+                    $hoja->setCellValue('D' . $row, $item['unidad_medida'] ?? '');
+                    $hoja->setCellValue('E' . $row, number_format((float)($item['costo'] ?? 0), 2));
+                    $hoja->setCellValue('F' . $row, number_format((float)($item['total'] ?? 0), 2));
+
+                    $subtotal += (float)($item['total'] ?? 0);
+
+                    $hoja->getStyle('C' . $row . ':D' . $row)->applyFromArray($center);
+                    $hoja->getStyle('E' . $row . ':F' . $row)->applyFromArray($right);
+                    $row++;
+                }
+            } else {
+                $hoja->setCellValue('A' . $row, '');
+                $hoja->setCellValue('B' . $row, 'Sin registros');
+                $hoja->mergeCells('B' . $row . ':F' . $row);
+                $row++;
+            }
+
+            $totalGral += $subtotal;
+
+            $hoja->setCellValue('E' . $row, 'TOTAL');
+            $hoja->setCellValue('F' . $row, number_format($subtotal, 2));
+            $hoja->getStyle('E' . $row . ':F' . $row)->getFont()->setBold(true);
+            $hoja->getStyle('E' . $row . ':F' . $row)->applyFromArray($right);
+
+            $hoja->getStyle('A' . $startRow . ':F' . $row)->applyFromArray($borderThin);
+            $row += 1; // Un pequeño espacio no, mejor junto
+        }
+
+        $row++;
+        $hoja->setCellValue('E' . $row, 'TOTAL GENERAL Bs.');
+        $hoja->setCellValue('F' . $row, number_format($totalGral, 2));
+        $hoja->getStyle('E' . $row . ':F' . $row)->applyFromArray($borderThin);
+        $hoja->getStyle('E' . $row . ':F' . $row)->getFont()->setBold(true);
+        $hoja->getStyle('E' . $row . ':F' . $row)->applyFromArray($right);
+
+        $row += 2;
+        $hoja->setCellValue('A' . $row, 'OBSERVACIONES');
+        $hoja->mergeCells('A' . $row . ':F' . $row);
+        $hoja->getStyle('A' . $row)->getFont()->setBold(true);
+        $row++;
+
+        $hoja->setCellValue('A' . $row, $fa->observaciones ?? '');
+        $hoja->mergeCells('A' . $row . ':F' . ($row + 3));
+        $hoja->getStyle('A' . ($row - 1) . ':F' . ($row + 3))->applyFromArray($borderThin);
+        $hoja->getStyle('A' . $row)->getAlignment()->setWrapText(true);
+        $hoja->getStyle('A' . $row)->getAlignment()->setVertical(\PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_TOP);
+        $row += 4;
+
+        $fileName = 'FormularioAutorizacion_' . $fa->id . '.xlsx';
         header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         header('Content-Disposition: attachment;filename="' . $fileName . '"');
         header('Cache-Control: max-age=0');
