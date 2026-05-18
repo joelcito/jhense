@@ -205,6 +205,9 @@
                         <li class="nav-item">
                             <a class="nav-link" id="pills-form8-tab" data-toggle="pill" href="#pills-form8" role="tab" aria-controls="pills-form8" aria-selected="false">8. Form. Fotográfico</a>
                         </li>
+                        <li class="nav-item">
+                            <a class="nav-link" id="pills-form9-tab" data-toggle="pill" href="#pills-form9" role="tab" aria-controls="pills-form9" aria-selected="false">9. Acta Entrega</a>
+                        </li>
                         <!-- Aquí se agregarán los demás formularios -->
                     </ul>
                     
@@ -247,6 +250,11 @@
                         <!-- FORM 9: FORMULARIO FOTOGRÁFICO -->
                         <div class="tab-pane fade" id="pills-form8" role="tabpanel" aria-labelledby="pills-form8-tab">
                             @include('grupoCliente.formularios.reporteFotografico')
+                        </div>
+
+                        <!-- FORM 10: ACTA DE ENTREGA -->
+                        <div class="tab-pane fade" id="pills-form9" role="tabpanel" aria-labelledby="pills-form9-tab">
+                            @include('grupoCliente.formularios.actaEntrega')
                         </div>
                     </div>
                 </div>

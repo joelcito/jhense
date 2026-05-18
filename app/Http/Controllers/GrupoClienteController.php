@@ -10,6 +10,7 @@ use App\Models\OrdenTrabajo;
 use App\Models\FormularioAutorizacion;
 use App\Models\RecepcionRepuesto;
 use App\Models\ReporteFotografico;
+use App\Models\ActaEntrega;
 use App\Models\FormularioDiagnostico;
 use App\Models\Grupo;
 use App\Models\GrupoCliente;
@@ -2650,6 +2651,244 @@ class GrupoClienteController extends Controller
         }
 
         $fileName = 'ReporteFotografico_' . $rf->id . '.xlsx';
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header('Content-Disposition: attachment;filename="' . $fileName . '"');
+        header('Cache-Control: max-age=0');
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($libro);
+        $writer->save('php://output');
+        exit;
+    }
+
+    /* ============================================================
+     * FORMULARIO 10 — ACTA DE ENTREGA
+     * ============================================================ */
+
+    public function guardarActaEntrega(Request $request)
+    {
+        if ($request->ajax()) {
+            $ae_id = $request->input('acta_id');
+            $usuario = Auth::user();
+            $orden_recepcion_id = $request->input('orden_recepcion_id');
+
+            if ($ae_id) {
+                $ae = ActaEntrega::find($ae_id);
+                $ae->usuario_modificador_id = $usuario->id;
+            } else {
+                $ae = new ActaEntrega();
+                $ae->usuario_creador_id = $usuario->id;
+                $ae->orden_recepcion_id = $orden_recepcion_id;
+            }
+
+            $ae->fecha_entrega = $request->input('fecha_entrega');
+            $ae->entregado_a = $request->input('entregado_a');
+            $ae->de = $request->input('de');
+            $ae->asunto = $request->input('asunto');
+
+            $servicios = $request->input('servicios_realizados', []);
+            $ae->servicios_realizados = json_encode($servicios);
+
+            $ae->save();
+
+            return response()->json([
+                'estado' => true,
+                'ae_id' => $ae->id
+            ]);
+        }
+        return response()->json(['estado' => false]);
+    }
+
+    public function obtenerActaEntrega(Request $request)
+    {
+        if ($request->ajax()) {
+            $orden_id = $request->input('orden_recepcion_id');
+
+            $ae = ActaEntrega::where('orden_recepcion_id', $orden_id)->first();
+            $ot = OrdenTrabajo::where('orden_recepcion_id', $orden_id)->first();
+            $numOt = '';
+            if ($ot) {
+                $numOt = $ot->numero_orden_secuencial . '/' . $ot->anio;
+            }
+
+            if ($ae) {
+                $ae->servicios_realizados = is_string($ae->servicios_realizados) ? json_decode($ae->servicios_realizados, true) : $ae->servicios_realizados;
+                return response()->json(['estado' => true, 'ae' => $ae, 'num_ot' => $numOt]);
+            }
+
+            // No existe, traemos la lista plana de servicios desde la Cotizacion o FormularioAutorizacion
+            $cotizacion = Cotizacion::where('orden_recepcion_id', $orden_id)->first();
+            $serviciosPlanos = [];
+
+            if ($cotizacion) {
+                $orden = OrdenRecepcion::find($orden_id);
+                $cotizacion = $this->reagruparCotizacion($cotizacion, $orden->grupo_cliente_id);
+
+                $prev = is_string($cotizacion->preventivos) ? json_decode($cotizacion->preventivos, true) : $cotizacion->preventivos;
+                $rp = is_string($cotizacion->repuestos) ? json_decode($cotizacion->repuestos, true) : $cotizacion->repuestos;
+                $corr = is_string($cotizacion->correctivos) ? json_decode($cotizacion->correctivos, true) : $cotizacion->correctivos;
+
+                if (is_array($prev)) {
+                    foreach ($prev as $item) {
+                        $serviciosPlanos[] = $item['nombre'] ?? '';
+                    }
+                }
+                if (is_array($rp)) {
+                    foreach ($rp as $item) {
+                        $serviciosPlanos[] = $item['nombre'] ?? '';
+                    }
+                }
+                if (is_array($corr)) {
+                    foreach ($corr as $item) {
+                        $serviciosPlanos[] = $item['nombre'] ?? '';
+                    }
+                }
+            }
+
+            return response()->json(['estado' => true, 'ae' => null, 'cotizacion_servicios' => $serviciosPlanos, 'num_ot' => $numOt]);
+        }
+        return response()->json(['estado' => false]);
+    }
+
+    public function descargarPdfActaEntrega($id)
+    {
+        $ae = ActaEntrega::findOrFail($id);
+        $orden = OrdenRecepcion::with(['auto.marca', 'grupoCliente.cliente'])->findOrFail($ae->orden_recepcion_id);
+
+        $servicios = is_string($ae->servicios_realizados) ? json_decode($ae->servicios_realizados, true) : $ae->servicios_realizados;
+
+        $ot = OrdenTrabajo::where('orden_recepcion_id', $ae->orden_recepcion_id)->first();
+        $numOt = '';
+        if ($ot) {
+            $numOt = $ot->numero_orden_secuencial . '/' . $ot->anio;
+        }
+
+        $pdf = Pdf::loadView('grupoCliente.formularios.pdfActaEntrega', compact('ae', 'orden', 'servicios', 'numOt'));
+        return $pdf->download('ActaEntrega_' . $ae->id . '.pdf');
+    }
+
+    public function descargarExcelActaEntrega($id)
+    {
+        $ae = ActaEntrega::findOrFail($id);
+        $orden = OrdenRecepcion::with(['auto.marca', 'grupoCliente.cliente'])->findOrFail($ae->orden_recepcion_id);
+
+        $servicios = is_string($ae->servicios_realizados) ? json_decode($ae->servicios_realizados, true) : $ae->servicios_realizados;
+
+        $ot = OrdenTrabajo::where('orden_recepcion_id', $ae->orden_recepcion_id)->first();
+        $numOt = '';
+        if ($ot) {
+            $numOt = $ot->numero_orden_secuencial . '/' . $ot->anio;
+        }
+
+        $libro = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $hoja  = $libro->getActiveSheet();
+        $hoja->setTitle('Acta de Entrega');
+
+        $borderThin  = ['borders' => ['allBorders' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN]]];
+
+        $hoja->getColumnDimension('A')->setWidth(20);
+        $hoja->getColumnDimension('B')->setWidth(30);
+        $hoja->getColumnDimension('C')->setWidth(20);
+        $hoja->getColumnDimension('D')->setWidth(30);
+
+        // Header
+        $hoja->setCellValue('A2', 'ACTA DE ENTREGA');
+        $hoja->mergeCells('A2:D4');
+        $hoja->getStyle('A2')->getFont()->setBold(true)->setSize(16);
+        $hoja->getStyle('A2')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+        $hoja->getStyle('A2')->getAlignment()->setVertical(\PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER);
+        $hoja->getStyle('A2:D4')->applyFromArray($borderThin);
+
+        $hoja->setCellValue('A6', 'SCZ-TGM-AC-125/25'); // Static per image, maybe dynamic but let's use numOt context
+        $hoja->mergeCells('A6:D6');
+        $hoja->getStyle('A6')->getFont()->setBold(true)->setUnderline(true);
+        $hoja->getStyle('A6')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+
+        $hoja->setCellValue('A8', 'Fecha de Ingreso:');
+        $hoja->setCellValue('B8', $orden->created_at ? $orden->created_at->format('Y-m-d') : '');
+        $hoja->setCellValue('C8', 'Fecha Entrega:');
+        $hoja->setCellValue('D8', $ae->fecha_entrega ?? '');
+
+        $hoja->setCellValue('A9', 'Entregado A:');
+        $hoja->setCellValue('B9', $ae->entregado_a ?? '');
+        $hoja->setCellValue('C9', 'De:');
+        $hoja->setCellValue('D9', $ae->de ?? '');
+
+        $hoja->setCellValue('A10', 'Placa:');
+        $hoja->setCellValue('B10', $orden->auto->placa ?? '');
+        $hoja->setCellValue('C10', 'Kilometraje:');
+        $hoja->setCellValue('D10', $orden->kilometraje ?? '');
+
+        $hoja->setCellValue('A11', 'Clase de vehiculo:');
+        $hoja->setCellValue('B11', $orden->auto->modelo ?? '');
+        $hoja->setCellValue('C11', 'Objeto de la contratacion:');
+        $hoja->setCellValue('D11', 'MANTENIMIENTO PREVENTIVO Y CORRECTIVO');
+
+        $hoja->setCellValue('A12', 'Marca/ Tipo:');
+        $hoja->setCellValue('B12', $orden->auto->marca->nombre ?? '');
+        $hoja->setCellValue('C12', 'Direccion del Cliente:');
+        $hoja->setCellValue('D12', $orden->grupoCliente->cliente->direccion ?? '');
+
+        $hoja->getStyle('A8:A12')->getFont()->setBold(true);
+        $hoja->getStyle('C8:C12')->getFont()->setBold(true);
+
+        $row = 14;
+        $hoja->setCellValue('A' . $row, 'ASUNTO: ' . ($ae->asunto ?? 'MANTENIMIENTO CORRECTIVO'));
+        $hoja->mergeCells('A' . $row . ':D' . $row);
+        $hoja->getStyle('A' . $row)->getFont()->setBold(true);
+        $hoja->getStyle('A' . $row . ':D' . $row)->applyFromArray($borderThin);
+        $row++;
+
+        $hoja->setCellValue('A' . $row, 'De acuerdo a ingreso y salida de vehiculo motorizado con placa de control detallado en el presente documento, a continuacion se detalla cada uno de los servicios de mantenimiento correctivo ejecutados:');
+        $hoja->mergeCells('A' . $row . ':D' . ($row + 1));
+        $hoja->getStyle('A' . $row)->getAlignment()->setWrapText(true);
+        $hoja->getStyle('A' . $row . ':D' . ($row + 1))->applyFromArray($borderThin);
+        $row += 2;
+
+        $hoja->setCellValue('A' . $row, 'DETALLE DEL SERVICIO:');
+        $hoja->mergeCells('A' . $row . ':D' . $row);
+        $hoja->getStyle('A' . $row)->getFont()->setBold(true);
+        $hoja->getStyle('A' . $row . ':D' . $row)->applyFromArray($borderThin);
+        $row++;
+
+        $hoja->setCellValue('A' . $row, 'Mantenimiento realizado al vehiculo detallado');
+        $hoja->mergeCells('A' . $row . ':B' . $row);
+        $hoja->setCellValue('C' . $row, 'Según Orden de Servicio: ' . $numOt);
+        $hoja->mergeCells('C' . $row . ':D' . $row);
+        $hoja->getStyle('A' . $row . ':D' . $row)->applyFromArray($borderThin);
+        $hoja->getStyle('A' . $row . ':D' . $row)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+        $row++;
+
+        if ($servicios && count($servicios) > 0) {
+            $cont = 1;
+            foreach ($servicios as $srv) {
+                $hoja->setCellValue('A' . $row, $cont . ')');
+                $hoja->setCellValue('B' . $row, $srv);
+                $hoja->mergeCells('B' . $row . ':D' . $row);
+                $hoja->getStyle('A' . $row . ':D' . $row)->applyFromArray($borderThin);
+                $row++;
+                $cont++;
+            }
+        } else {
+            $hoja->setCellValue('A' . $row, '1)');
+            $hoja->setCellValue('B' . $row, 'Sin servicios registrados');
+            $hoja->mergeCells('B' . $row . ':D' . $row);
+            $hoja->getStyle('A' . $row . ':D' . $row)->applyFromArray($borderThin);
+            $row++;
+        }
+
+        $row += 2;
+        $hoja->setCellValue('A' . $row, 'En conformidad a lo descrito en el presente documento y en honor a la verdad, firmamos al pie de la misma.');
+        $hoja->mergeCells('A' . $row . ':D' . $row);
+        $row += 5;
+
+        $hoja->setCellValue('A' . $row, 'Taller');
+        $hoja->getStyle('A' . $row)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+        $hoja->getStyle('A' . ($row - 1))->getBorders()->getBottom()->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN);
+
+        $hoja->setCellValue('D' . $row, 'Cliente');
+        $hoja->getStyle('D' . $row)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+        $hoja->getStyle('D' . ($row - 1))->getBorders()->getBottom()->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN);
+
+        $fileName = 'ActaEntrega_' . $ae->id . '.xlsx';
         header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         header('Content-Disposition: attachment;filename="' . $fileName . '"');
         header('Cache-Control: max-age=0');

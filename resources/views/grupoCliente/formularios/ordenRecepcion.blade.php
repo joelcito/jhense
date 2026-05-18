@@ -305,6 +305,9 @@
                     // Cargar Formulario 9 (Reporte Fotográfico)
                     cargarDatosReporteFotografico(orden);
                     
+                    // Cargar Formulario 10 (Acta de Entrega)
+                    cargarDatosActaEntrega(orden);
+                    
                     // Mostrar tab 1 por defecto
                     $('#pills-form1-tab').tab('show');
                     $('#tituloOrdenActual').text('EDITANDO ORDEN DE TRABAJO N° ' + orden.id);
