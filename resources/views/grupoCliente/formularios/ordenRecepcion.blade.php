@@ -308,6 +308,9 @@
                     // Cargar Formulario 10 (Acta de Entrega)
                     cargarDatosActaEntrega(orden);
                     
+                    // Cargar Formulario 11 (Acta de Devolución de Repuestos)
+                    cargarDatosActaDevolucionRepuesto(orden);
+                    
                     // Mostrar tab 1 por defecto
                     $('#pills-form1-tab').tab('show');
                     $('#tituloOrdenActual').text('EDITANDO ORDEN DE TRABAJO N° ' + orden.id);

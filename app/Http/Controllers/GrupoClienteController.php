@@ -11,6 +11,7 @@ use App\Models\FormularioAutorizacion;
 use App\Models\RecepcionRepuesto;
 use App\Models\ReporteFotografico;
 use App\Models\ActaEntrega;
+use App\Models\ActaDevolucionRepuesto;
 use App\Models\FormularioDiagnostico;
 use App\Models\Grupo;
 use App\Models\GrupoCliente;
@@ -2889,6 +2890,600 @@ class GrupoClienteController extends Controller
         $hoja->getStyle('D' . ($row - 1))->getBorders()->getBottom()->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN);
 
         $fileName = 'ActaEntrega_' . $ae->id . '.xlsx';
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header('Content-Disposition: attachment;filename="' . $fileName . '"');
+        header('Cache-Control: max-age=0');
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($libro);
+        $writer->save('php://output');
+        exit;
+    }
+
+    /* ============================================================
+     * FORMULARIO 11 — ACTA DE DEVOLUCIÓN DE REPUESTOS
+     * ============================================================ */
+
+    public function guardarActaDevolucionRepuesto(Request $request)
+    {
+        if ($request->ajax()) {
+            $adr_id = $request->input('acta_id');
+            $usuario = Auth::user();
+            $orden_recepcion_id = $request->input('orden_recepcion_id');
+
+            if ($adr_id) {
+                $adr = ActaDevolucionRepuesto::find($adr_id);
+                $adr->usuario_modificador_id = $usuario->id;
+            } else {
+                $adr = new ActaDevolucionRepuesto();
+                $adr->usuario_creador_id = $usuario->id;
+                $adr->orden_recepcion_id = $orden_recepcion_id;
+            }
+
+            $adr->observaciones = $request->input('observaciones');
+
+            $repuestos = $request->input('repuestos', []);
+            $repuestosProcesados = [];
+            foreach ($repuestos as $item) {
+                $repuestosProcesados[] = [
+                    'cantidad' => $item['cantidad'] ?? '',
+                    'descripcion' => $item['descripcion'] ?? '',
+                    'ocultar_reporte' => isset($item['ocultar_reporte']) && $item['ocultar_reporte'] == '1'
+                ];
+            }
+            $adr->repuestos = json_encode($repuestosProcesados);
+
+            $adr->save();
+
+            return response()->json([
+                'estado' => true,
+                'adr_id' => $adr->id
+            ]);
+        }
+        return response()->json(['estado' => false]);
+    }
+
+    public function obtenerActaDevolucionRepuesto(Request $request)
+    {
+        if ($request->ajax()) {
+            $orden_id = $request->input('orden_recepcion_id');
+
+            $adr = ActaDevolucionRepuesto::where('orden_recepcion_id', $orden_id)->first();
+            $ot = OrdenTrabajo::where('orden_recepcion_id', $orden_id)->first();
+            $numOt = '';
+            if ($ot) {
+                $numOt = $ot->numero_orden_secuencial . '/' . $ot->anio;
+            }
+
+            if ($adr) {
+                $adr->repuestos = is_string($adr->repuestos) ? json_decode($adr->repuestos, true) : $adr->repuestos;
+                return response()->json(['estado' => true, 'adr' => $adr, 'num_ot' => $numOt]);
+            }
+
+            $cotizacion = Cotizacion::where('orden_recepcion_id', $orden_id)->first();
+            $repuestosPlanos = [];
+
+            if ($cotizacion) {
+                $orden = OrdenRecepcion::find($orden_id);
+                $cotizacion = $this->reagruparCotizacion($cotizacion, $orden->grupo_cliente_id);
+                $rp = is_string($cotizacion->repuestos) ? json_decode($cotizacion->repuestos, true) : $cotizacion->repuestos;
+
+                if (is_array($rp)) {
+                    foreach ($rp as $item) {
+                        $repuestosPlanos[] = [
+                            'cantidad' => $item['cantidad'] ?? '',
+                            'descripcion' => $item['nombre'] ?? '',
+                            'ocultar_reporte' => false
+                        ];
+                    }
+                }
+            }
+
+            return response()->json(['estado' => true, 'adr' => null, 'cotizacion_repuestos' => $repuestosPlanos, 'num_ot' => $numOt]);
+        }
+        return response()->json(['estado' => false]);
+    }
+
+    public function descargarPdfActaDevolucionRepuesto($id)
+    {
+        $adr = ActaDevolucionRepuesto::findOrFail($id);
+        $orden = OrdenRecepcion::with(['auto.marca', 'grupoCliente.cliente'])->findOrFail($adr->orden_recepcion_id);
+
+        $repuestos = is_string($adr->repuestos) ? json_decode($adr->repuestos, true) : $adr->repuestos;
+
+        $ot = OrdenTrabajo::where('orden_recepcion_id', $adr->orden_recepcion_id)->first();
+        $numOt = '';
+        if ($ot) {
+            $numOt = $ot->numero_orden_secuencial . '/' . $ot->anio;
+        }
+
+        // Filtrar repuestos ocultos para el PDF
+        $repuestosVisibles = array_filter($repuestos, function ($r) {
+            return !isset($r['ocultar_reporte']) || $r['ocultar_reporte'] == false;
+        });
+
+        $pdf = Pdf::loadView('grupoCliente.formularios.pdfActaDevolucionRepuesto', compact('adr', 'orden', 'repuestosVisibles', 'numOt'));
+        return $pdf->download('ActaDevolucionRepuesto_' . $adr->id . '.pdf');
+    }
+
+    public function descargarExcelActaDevolucionRepuesto($id)
+    {
+        $adr = ActaDevolucionRepuesto::findOrFail($id);
+        $orden = OrdenRecepcion::with(['auto.marca', 'grupoCliente.cliente'])->findOrFail($adr->orden_recepcion_id);
+
+        $repuestos = is_string($adr->repuestos) ? json_decode($adr->repuestos, true) : $adr->repuestos;
+        $repuestosVisibles = array_filter($repuestos, function ($r) {
+            return !isset($r['ocultar_reporte']) || $r['ocultar_reporte'] == false;
+        });
+
+        $ot = OrdenTrabajo::where('orden_recepcion_id', $adr->orden_recepcion_id)->first();
+        $numOt = '';
+        if ($ot) {
+            $numOt = $ot->numero_orden_secuencial . '/' . $ot->anio;
+        }
+
+        $libro = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $hoja  = $libro->getActiveSheet();
+        $hoja->setTitle('Acta Devolución Repuestos');
+
+        $borderThin  = ['borders' => ['allBorders' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN]]];
+
+        $hoja->getColumnDimension('A')->setWidth(15);
+        $hoja->getColumnDimension('B')->setWidth(20);
+        $hoja->getColumnDimension('C')->setWidth(20);
+        $hoja->getColumnDimension('D')->setWidth(15);
+        $hoja->getColumnDimension('E')->setWidth(20);
+        $hoja->getColumnDimension('F')->setWidth(20);
+
+        // Header
+        $hoja->setCellValue('C2', 'ACTA DE DEVOLUCION DE REPUESTOS');
+        $hoja->mergeCells('C2:E4');
+        $hoja->getStyle('C2')->getFont()->setBold(true)->setSize(16)->getColor()->setARGB('00003366');
+        $hoja->getStyle('C2')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+        $hoja->getStyle('C2')->getAlignment()->setVertical(\PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER);
+        $hoja->getStyle('C2:E4')->applyFromArray($borderThin);
+
+        $hoja->setCellValue('A6', 'N° de Orden:');
+        $hoja->setCellValue('B6', $numOt);
+        $hoja->setCellValue('D6', 'Fecha:');
+        $hoja->setCellValue('E6', $adr->created_at ? $adr->created_at->format('Y-m-d') : '');
+
+        $cliente = $orden->grupoCliente->cliente ?? null;
+        $hoja->setCellValue('A7', 'Empresa/ Cliente:');
+        $hoja->setCellValue('B7', $cliente->nombres ?? '');
+        $hoja->setCellValue('D7', 'NIT/ C.I.:');
+        $hoja->setCellValue('E7', $cliente->nit ?? '');
+
+        $hoja->setCellValue('A8', 'Contacto de ref.:');
+        $hoja->setCellValue('B8', $cliente->numero_celular ?? '');
+        $hoja->setCellValue('D8', 'Telefono/ Correo:');
+        $hoja->setCellValue('E8', $cliente->numero_celular ?? '');
+
+        $hoja->setCellValue('A9', 'Placa/ Chasis:');
+        $hoja->setCellValue('B9', $orden->auto->placa ?? '');
+        $hoja->setCellValue('D9', 'Kilometraje:');
+        $hoja->setCellValue('E9', $orden->kilometraje ?? '');
+
+        $hoja->setCellValue('A10', 'Clase de vehiculo:');
+        $hoja->setCellValue('B10', $orden->auto->modelo ?? '');
+        $hoja->setCellValue('D10', 'Objeto de la contratacion:');
+        $hoja->setCellValue('E10', 'MANTENIMIENTO PREVENTIVO Y CORRECTIVO');
+
+        $hoja->setCellValue('A11', 'Marca/ Tipo:');
+        $hoja->setCellValue('B11', $orden->auto->marca->nombre ?? '');
+        $hoja->setCellValue('D11', 'Direccion de cliente:');
+        $hoja->setCellValue('E11', $cliente->direccion ?? '');
+
+        $row = 13;
+        $hoja->setCellValue('A' . $row, 'DETALLE DE ACTIVIDADES DEL VEHICULO');
+        $hoja->getStyle('A' . $row)->getFont()->setBold(true);
+        $row++;
+        
+        $hoja->setCellValue('A' . $row, 'De acuerdo a ingreso y salida de vehiculo motorizado con placa de control detallado en el presente documento, a continuacion se detalla cada uno de los REPUESTOS A DEVOLVER:');
+        $hoja->mergeCells('A' . $row . ':F' . ($row + 1));
+        $hoja->getStyle('A' . $row)->getAlignment()->setWrapText(true);
+        $row += 2;
+
+        $hoja->setCellValue('A' . $row, 'N°');
+        $hoja->setCellValue('B' . $row, 'DESCRIPCIÓN');
+        $hoja->mergeCells('B' . $row . ':E' . $row);
+        $hoja->setCellValue('F' . $row, 'CANTIDAD');
+        $hoja->getStyle('A' . $row . ':F' . $row)->getFont()->setBold(true);
+        $hoja->getStyle('A' . $row . ':F' . $row)->applyFromArray($borderThin);
+        $hoja->getStyle('A' . $row . ':F' . $row)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+        $row++;
+
+        if ($repuestosVisibles && count($repuestosVisibles) > 0) {
+            $cont = 1;
+            foreach ($repuestosVisibles as $rp) {
+                $hoja->setCellValue('A' . $row, $cont);
+                $hoja->setCellValue('B' . $row, $rp['descripcion'] ?? '');
+                $hoja->mergeCells('B' . $row . ':E' . $row);
+                $hoja->setCellValue('F' . $row, $rp['cantidad'] ?? '');
+                $hoja->getStyle('A' . $row . ':F' . $row)->applyFromArray($borderThin);
+                $hoja->getStyle('A' . $row . ':A' . $row)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+                $hoja->getStyle('F' . $row . ':F' . $row)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+                $row++;
+                $cont++;
+            }
+        } else {
+            $hoja->setCellValue('A' . $row, '1');
+            $hoja->setCellValue('B' . $row, 'No hay repuestos registrados para devolver.');
+            $hoja->mergeCells('B' . $row . ':E' . $row);
+            $hoja->setCellValue('F' . $row, '-');
+            $hoja->getStyle('A' . $row . ':F' . $row)->applyFromArray($borderThin);
+            $row++;
+        }
+
+        $row += 2;
+        $hoja->setCellValue('A' . $row, 'En conformidad a lo descrito en el presente documento y en honor a la verdad, firmamos al pie de la misma.');
+        $hoja->mergeCells('A' . $row . ':F' . $row);
+        $row += 5;
+
+        $hoja->setCellValue('B' . $row, 'Taller');
+        $hoja->getStyle('B' . $row)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+        $hoja->getStyle('B' . ($row - 1))->getBorders()->getBottom()->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN);
+
+        $hoja->setCellValue('E' . $row, 'Cliente');
+        $hoja->getStyle('E' . $row)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+        $hoja->getStyle('E' . ($row - 1))->getBorders()->getBottom()->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN);
+
+        $fileName = 'ActaDevolucionRepuestos_' . $adr->id . '.xlsx';
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header('Content-Disposition: attachment;filename="' . $fileName . '"');
+        header('Cache-Control: max-age=0');
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($libro);
+        $writer->save('php://output');
+        exit;
+    }
+
+
+    /* ============================================================
+     * REPORTE MENSUAL DE MANTENIMIENTO
+     * ============================================================ */
+
+    private function agruparItemsPorCategoria($ot, $serviciosCliente)
+    {
+        $categorias = [
+            'PREVENTIVO' => 0,
+            'CORRECTIVO' => 0,
+            'REPUESTOS' => 0,
+            'OTROS' => 0
+        ];
+
+        // Función auxiliar para sumar costos
+        $procesarArreglo = function($items) use (&$categorias, $serviciosCliente) {
+            if (!$items || !is_array($items)) return;
+            foreach ($items as $item) {
+                $nombre = $item['nombre'] ?? '';
+                $costo = floatval($item['total'] ?? $item['costo_total'] ?? 0);
+                
+                // Buscar en el catálogo
+                $cat = $serviciosCliente[$nombre] ?? 'OTROS'; // default a OTROS
+                
+                if (array_key_exists($cat, $categorias)) {
+                    $categorias[$cat] += $costo;
+                } else if ($cat == 'SUMINISTRO') {
+                    // Si es suministro, se va a repuestos según tu UI o OTROS? 
+                    // El usuario pidió "Repuestos (categoria REPUESTOS)", lo meteremos a REPUESTOS
+                    $categorias['REPUESTOS'] += $costo;
+                } else {
+                    $categorias['OTROS'] += $costo;
+                }
+            }
+        };
+
+        $procesarArreglo($ot->mano_obra);
+        $procesarArreglo($ot->repuestos);
+        $procesarArreglo($ot->insumos);
+        $procesarArreglo($ot->trabajos_tercero);
+
+        $totalReparaciones = $categorias['CORRECTIVO'] + $categorias['REPUESTOS'];
+        $sumatoriaTotal = $categorias['PREVENTIVO'] + $totalReparaciones + $categorias['OTROS']; // o el ot->total_general
+
+        return [
+            'PREVENTIVO' => $categorias['PREVENTIVO'],
+            'CORRECTIVO' => $categorias['CORRECTIVO'],
+            'REPUESTOS' => $categorias['REPUESTOS'],
+            'OTROS' => $categorias['OTROS'],
+            'TOTAL_REPARACIONES' => $totalReparaciones,
+            'SUMATORIA_TOTAL' => $ot->total_general // usamos el general de la BD para exactitud
+        ];
+    }
+
+    public function descargarReporteMensualPdf(Request $request)
+    {
+        $grupo_cliente_id = $request->query('grupo_cliente_id');
+        $mes = $request->query('mes');
+        $anio = $request->query('anio');
+
+        $grupoCliente = GrupoCliente::with(['cliente'])->findOrFail($grupo_cliente_id);
+        $grupo = Grupo::find($grupoCliente->grupo_id);
+
+        $catalogo = ClienteServicio::where('grupo_cliente_id', $grupo_cliente_id)->get();
+        $serviciosCliente = [];
+        foreach ($catalogo as $cat) {
+            $serviciosCliente[$cat->nombre] = $cat->categoria;
+        }
+
+        // Fetch ordenes de recepcion de este mes y año
+        $ordenes = OrdenRecepcion::with('auto.marca')
+            ->where('grupo_cliente_id', $grupo_cliente_id)
+            ->whereYear('fecha_recepcion', $anio)
+            ->whereMonth('fecha_recepcion', $mes)
+            ->get();
+
+        $ordenesTrabajo = collect();
+        $resumen = [
+            'PREVENTIVO' => 0,
+            'CORRECTIVO' => 0,
+            'REPUESTOS' => 0,
+            'OTROS' => 0,
+            'TOTAL' => 0
+        ];
+
+        foreach ($ordenes as $orden) {
+            $ot = OrdenTrabajo::where('orden_recepcion_id', $orden->id)->first();
+            if ($ot) {
+                // Decode JSON arrays
+                $ot->mano_obra = is_string($ot->mano_obra) ? json_decode($ot->mano_obra, true) : $ot->mano_obra;
+                $ot->repuestos = is_string($ot->repuestos) ? json_decode($ot->repuestos, true) : $ot->repuestos;
+                $ot->insumos = is_string($ot->insumos) ? json_decode($ot->insumos, true) : $ot->insumos;
+                $ot->trabajos_tercero = is_string($ot->trabajos_tercero) ? json_decode($ot->trabajos_tercero, true) : $ot->trabajos_tercero;
+                
+                $ot->orden = $orden;
+                
+                $catCostos = $this->agruparItemsPorCategoria($ot, $serviciosCliente);
+                $ot->costos_categorizados = $catCostos;
+
+                $ordenesTrabajo->push($ot);
+
+                $resumen['PREVENTIVO'] += $catCostos['PREVENTIVO'];
+                $resumen['CORRECTIVO'] += $catCostos['CORRECTIVO'];
+                $resumen['REPUESTOS'] += $catCostos['REPUESTOS'];
+                $resumen['OTROS'] += $catCostos['OTROS'];
+                $resumen['TOTAL'] += $ot->total_general;
+            }
+        }
+
+        $meses = ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+        $nombreMes = $meses[(int)$mes] ?? '';
+
+        $pdf = Pdf::loadView('grupoCliente.formularios.pdfReporteMensual', compact('grupoCliente', 'grupo', 'ordenesTrabajo', 'resumen', 'mes', 'nombreMes', 'anio'))
+            ->setPaper('a4', 'landscape'); // Lo ponemos apaisado para que entren las columnas
+        
+        return $pdf->download('Reporte_Mensual_' . $nombreMes . '_' . $anio . '.pdf');
+    }
+
+    public function descargarReporteMensualExcel(Request $request)
+    {
+        $grupo_cliente_id = $request->query('grupo_cliente_id');
+        $mes = $request->query('mes');
+        $anio = $request->query('anio');
+
+        $grupoCliente = GrupoCliente::with(['cliente'])->findOrFail($grupo_cliente_id);
+        $grupo = Grupo::find($grupoCliente->grupo_id);
+
+        $catalogo = ClienteServicio::where('grupo_cliente_id', $grupo_cliente_id)->get();
+        $serviciosCliente = [];
+        foreach ($catalogo as $cat) {
+            $serviciosCliente[$cat->nombre] = $cat->categoria;
+        }
+
+        $ordenes = OrdenRecepcion::with('auto.marca')
+            ->where('grupo_cliente_id', $grupo_cliente_id)
+            ->whereYear('fecha_recepcion', $anio)
+            ->whereMonth('fecha_recepcion', $mes)
+            ->get();
+
+        $ordenesTrabajo = collect();
+        $resumen = [
+            'PREVENTIVO' => 0,
+            'CORRECTIVO' => 0,
+            'REPUESTOS' => 0,
+            'OTROS' => 0,
+            'TOTAL' => 0
+        ];
+
+        foreach ($ordenes as $orden) {
+            $ot = OrdenTrabajo::where('orden_recepcion_id', $orden->id)->first();
+            if ($ot) {
+                $ot->mano_obra = is_string($ot->mano_obra) ? json_decode($ot->mano_obra, true) : $ot->mano_obra;
+                $ot->repuestos = is_string($ot->repuestos) ? json_decode($ot->repuestos, true) : $ot->repuestos;
+                $ot->insumos = is_string($ot->insumos) ? json_decode($ot->insumos, true) : $ot->insumos;
+                $ot->trabajos_tercero = is_string($ot->trabajos_tercero) ? json_decode($ot->trabajos_tercero, true) : $ot->trabajos_tercero;
+                
+                $ot->orden = $orden;
+
+                $catCostos = $this->agruparItemsPorCategoria($ot, $serviciosCliente);
+                $ot->costos_categorizados = $catCostos;
+
+                $ordenesTrabajo->push($ot);
+
+                $resumen['PREVENTIVO'] += $catCostos['PREVENTIVO'];
+                $resumen['CORRECTIVO'] += $catCostos['CORRECTIVO'];
+                $resumen['REPUESTOS'] += $catCostos['REPUESTOS'];
+                $resumen['OTROS'] += $catCostos['OTROS'];
+                $resumen['TOTAL'] += $ot->total_general;
+            }
+        }
+
+        $meses = ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+        $nombreMes = $meses[(int)$mes] ?? '';
+
+        $libro = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        
+        $borderThin  = ['borders' => ['allBorders' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN]]];
+
+        // --- HOJA 1: RESUMEN MENSUAL ---
+        $hojaResumen = $libro->getActiveSheet();
+        $hojaResumen->setTitle('Resumen');
+
+        $hojaResumen->getColumnDimension('A')->setWidth(15);
+        $hojaResumen->getColumnDimension('B')->setWidth(15);
+        $hojaResumen->getColumnDimension('C')->setWidth(15);
+        $hojaResumen->getColumnDimension('D')->setWidth(20);
+        $hojaResumen->getColumnDimension('E')->setWidth(20);
+        $hojaResumen->getColumnDimension('F')->setWidth(20);
+        $hojaResumen->getColumnDimension('G')->setWidth(15);
+        $hojaResumen->getColumnDimension('H')->setWidth(20);
+        $hojaResumen->getColumnDimension('I')->setWidth(20);
+
+        $hojaResumen->setCellValue('A1', 'REPORTE MENSUAL DE MANTENIMIENTO');
+        $hojaResumen->mergeCells('A1:I1');
+        $hojaResumen->getStyle('A1')->getFont()->setBold(true)->setSize(16)->getColor()->setARGB('00003366');
+        $hojaResumen->getStyle('A1')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+
+        $hojaResumen->setCellValue('A2', strtoupper($nombreMes) . ' ' . $anio);
+        $hojaResumen->mergeCells('A2:I2');
+        $hojaResumen->getStyle('A2')->getFont()->setBold(true)->setSize(14)->getColor()->setARGB('00003366');
+        $hojaResumen->getStyle('A2')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+
+        $row = 3;
+        $headers = [
+            'PLACA', 'Kilometraje', 'N° de Orden', 
+            'Mantenimiento Preventivo', 'Mantenimiento Correctivo', 'Repuestos', 
+            'Otros Ajustes', 'Total Reparaciones', 'Sumatoria Total Bs'
+        ];
+        
+        $col = 'A';
+        foreach ($headers as $h) {
+            $hojaResumen->setCellValue($col . $row, $h);
+            $hojaResumen->getStyle($col . $row)->getFont()->setBold(true);
+            $hojaResumen->getStyle($col . $row)->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setARGB('FFDDEBF7');
+            $hojaResumen->getStyle($col . $row)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+            $hojaResumen->getStyle($col . $row)->getAlignment()->setWrapText(true);
+            $col++;
+        }
+        $hojaResumen->getStyle('A'.$row.':I'.$row)->applyFromArray($borderThin);
+        $row++;
+
+        foreach ($ordenesTrabajo as $ot) {
+            $cat = $ot->costos_categorizados;
+            
+            $hojaResumen->setCellValue('A' . $row, $ot->orden->auto->placa ?? '');
+            $hojaResumen->setCellValue('B' . $row, $ot->orden->kilometraje ?? '');
+            $hojaResumen->setCellValue('C' . $row, $ot->numero_orden_secuencial);
+            
+            $hojaResumen->setCellValue('D' . $row, number_format($cat['PREVENTIVO'], 2, '.', ''));
+            $hojaResumen->setCellValue('E' . $row, number_format($cat['CORRECTIVO'], 2, '.', ''));
+            $hojaResumen->setCellValue('F' . $row, number_format($cat['REPUESTOS'], 2, '.', ''));
+            $hojaResumen->setCellValue('G' . $row, number_format($cat['OTROS'], 2, '.', ''));
+            
+            $hojaResumen->setCellValue('H' . $row, number_format($cat['TOTAL_REPARACIONES'], 2, '.', ''));
+            $hojaResumen->setCellValue('I' . $row, number_format($cat['SUMATORIA_TOTAL'], 2, '.', ''));
+            
+            $hojaResumen->getStyle('A'.$row.':I'.$row)->applyFromArray($borderThin);
+            $hojaResumen->getStyle('D'.$row.':I'.$row)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_RIGHT);
+            $row++;
+        }
+
+        // --- HOJAS ADICIONALES: ORDENES DE TRABAJO (Usando formato pdfOrdenTrabajoOficial / Excel de Ot) ---
+        $sheetIndex = 1;
+        foreach ($ordenesTrabajo as $ot) {
+            $numOt = $ot->numero_orden_secuencial . '-' . $ot->anio;
+            $hoja = $libro->createSheet($sheetIndex);
+            $hoja->setTitle('OT ' . $numOt);
+
+            $hoja->getColumnDimension('A')->setWidth(15);
+            $hoja->getColumnDimension('B')->setWidth(50);
+            $hoja->getColumnDimension('C')->setWidth(20);
+
+            $hoja->setCellValue('C2', 'ORDEN DE TRABAJO OFICIAL');
+            $hoja->mergeCells('C2:E4');
+            $hoja->getStyle('C2')->getFont()->setBold(true)->setSize(16)->getColor()->setARGB('00003366');
+            $hoja->getStyle('C2')->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+            $hoja->getStyle('C2')->getAlignment()->setVertical(\PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER);
+            $hoja->getStyle('C2:E4')->applyFromArray($borderThin);
+
+            $hoja->setCellValue('A6', 'N° de Orden:');
+            $hoja->setCellValue('B6', $numOt);
+            $hoja->setCellValue('D6', 'Fecha:');
+            $hoja->setCellValue('E6', $ot->fecha_emision ?? '');
+
+            $cliente = $ot->orden->grupoCliente->cliente ?? null;
+            $hoja->setCellValue('A7', 'Empresa/ Cliente:');
+            $hoja->setCellValue('B7', $cliente->nombres ?? '');
+            $hoja->setCellValue('D7', 'NIT/ C.I.:');
+            $hoja->setCellValue('E7', $cliente->nit ?? '');
+
+            $hoja->setCellValue('A8', 'Contacto de ref.:');
+            $hoja->setCellValue('B8', $cliente->numero_celular ?? '');
+            $hoja->setCellValue('D8', 'Telefono/ Correo:');
+            $hoja->setCellValue('E8', $cliente->numero_celular ?? '');
+
+            $hoja->setCellValue('A9', 'Placa/ Chasis:');
+            $hoja->setCellValue('B9', $ot->orden->auto->placa ?? '');
+            $hoja->setCellValue('D9', 'Kilometraje:');
+            $hoja->setCellValue('E9', $ot->orden->kilometraje ?? '');
+
+            $hoja->setCellValue('A10', 'Clase de vehiculo:');
+            $hoja->setCellValue('B10', $ot->orden->auto->modelo ?? '');
+            $hoja->setCellValue('D10', 'Objeto de la contratacion:');
+            $hoja->setCellValue('E10', 'MANTENIMIENTO PREVENTIVO Y CORRECTIVO');
+
+            $hoja->setCellValue('A11', 'Marca/ Tipo:');
+            $hoja->setCellValue('B11', $ot->orden->auto->marca->nombre ?? '');
+            $hoja->setCellValue('D11', 'Direccion de cliente:');
+            $hoja->setCellValue('E11', $cliente->direccion ?? '');
+
+            $row = 13;
+            $hoja->setCellValue('A' . $row, 'DETALLE DE ACTIVIDADES DEL VEHICULO');
+            $hoja->getStyle('A' . $row)->getFont()->setBold(true);
+            $row += 2;
+
+            $renderSection = function($title, $items, $subtotal) use (&$hoja, &$row, $borderThin) {
+                if ($items && count($items) > 0) {
+                    $hoja->setCellValue('A'.$row, $title);
+                    $hoja->mergeCells('A'.$row.':E'.$row);
+                    $hoja->getStyle('A'.$row)->getFont()->setBold(true);
+                    $hoja->getStyle('A'.$row.':E'.$row)->applyFromArray($borderThin);
+                    $hoja->getStyle('A'.$row.':E'.$row)->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setARGB('FFD9D9D9');
+                    $row++;
+
+                    $hoja->setCellValue('A'.$row, 'N°');
+                    $hoja->setCellValue('B'.$row, 'DESCRIPCIÓN');
+                    $hoja->mergeCells('B'.$row.':D'.$row);
+                    $hoja->setCellValue('E'.$row, 'COSTO');
+                    $hoja->getStyle('A'.$row.':E'.$row)->getFont()->setBold(true);
+                    $hoja->getStyle('A'.$row.':E'.$row)->applyFromArray($borderThin);
+                    $hoja->getStyle('A'.$row.':E'.$row)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+                    $row++;
+
+                    $cont = 1;
+                    foreach ($items as $item) {
+                        $hoja->setCellValue('A'.$row, $cont);
+                        $hoja->setCellValue('B'.$row, $item['nombre'] ?? '');
+                        $hoja->mergeCells('B'.$row.':D'.$row);
+                        $hoja->setCellValue('E'.$row, number_format($item['total'] ?? $item['costo_total'] ?? 0, 2));
+                        $hoja->getStyle('A'.$row.':E'.$row)->applyFromArray($borderThin);
+                        $row++;
+                        $cont++;
+                    }
+
+                    $hoja->setCellValue('D'.$row, 'SUBTOTAL');
+                    $hoja->setCellValue('E'.$row, number_format($subtotal, 2));
+                    $hoja->getStyle('D'.$row.':E'.$row)->getFont()->setBold(true);
+                    $hoja->getStyle('D'.$row.':E'.$row)->applyFromArray($borderThin);
+                    $row += 2;
+                }
+            };
+
+            $renderSection('1 MANO DE OBRA', $ot->mano_obra, $ot->subtotal_mano_obra);
+            $renderSection('2 REPUESTOS - ACCESORIOS - SUMINISTROS', $ot->repuestos, $ot->subtotal_repuestos);
+            $renderSection('3 INSUMOS', $ot->insumos, $ot->subtotal_insumos);
+            $renderSection('4 OTROS SERVICIOS REQUERIDOS', $ot->trabajos_tercero, $ot->subtotal_trabajos_tercero);
+
+            $hoja->setCellValue('D'.$row, 'TOTAL GENERAL');
+            $hoja->setCellValue('E'.$row, number_format($ot->total_general, 2));
+            $hoja->getStyle('D'.$row.':E'.$row)->getFont()->setBold(true);
+            $hoja->getStyle('D'.$row.':E'.$row)->applyFromArray($borderThin);
+            $hoja->getStyle('D'.$row.':E'.$row)->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setARGB('FFFFFF00');
+
+            $sheetIndex++;
+        }
+
+        $libro->setActiveSheetIndex(0);
+
+        $fileName = 'Reporte_Mensual_' . $nombreMes . '_' . $anio . '.xlsx';
         header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         header('Content-Disposition: attachment;filename="' . $fileName . '"');
         header('Cache-Control: max-age=0');

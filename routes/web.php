@@ -153,6 +153,11 @@ Route::middleware('auth')->group(function () {
         Route::get('/descargarPdfActaEntrega/{id}', [GrupoClienteController::class, 'descargarPdfActaEntrega'])->name('grupoCliente.descargarPdfActaEntrega');
         Route::get('/descargarExcelActaEntrega/{id}', [GrupoClienteController::class, 'descargarExcelActaEntrega'])->name('grupoCliente.descargarExcelActaEntrega');
 
+        Route::post('/guardarActaDevolucionRepuesto', [GrupoClienteController::class, 'guardarActaDevolucionRepuesto'])->name('grupoCliente.guardarActaDevolucionRepuesto');
+        Route::post('/obtenerActaDevolucionRepuesto', [GrupoClienteController::class, 'obtenerActaDevolucionRepuesto'])->name('grupoCliente.obtenerActaDevolucionRepuesto');
+        Route::get('/descargarPdfActaDevolucionRepuesto/{id}', [GrupoClienteController::class, 'descargarPdfActaDevolucionRepuesto'])->name('grupoCliente.descargarPdfActaDevolucionRepuesto');
+        Route::get('/descargarExcelActaDevolucionRepuesto/{id}', [GrupoClienteController::class, 'descargarExcelActaDevolucionRepuesto'])->name('grupoCliente.descargarExcelActaDevolucionRepuesto');
+
         Route::get('/descargarPdfOrdenRecepcion/{id}', [GrupoClienteController::class, 'descargarPdfOrdenRecepcion'])->name('grupoCliente.descargarPdfOrdenRecepcion');
         Route::get('/descargarExcelOrdenRecepcion/{id}', [GrupoClienteController::class, 'descargarExcelOrdenRecepcion'])->name('grupoCliente.descargarExcelOrdenRecepcion');
 
@@ -161,6 +166,10 @@ Route::middleware('auth')->group(function () {
 
         Route::get('/descargarPdfFormularioDiagnostico/{id}', [GrupoClienteController::class, 'descargarPdfFormularioDiagnostico'])->name('grupoCliente.descargarPdfFormularioDiagnostico');
         Route::get('/descargarExcelFormularioDiagnostico/{id}', [GrupoClienteController::class, 'descargarExcelFormularioDiagnostico'])->name('grupoCliente.descargarExcelFormularioDiagnostico');
+
+        Route::get('/descargarReporteMensualPdf', [GrupoClienteController::class, 'descargarReporteMensualPdf'])->name('grupoCliente.descargarReporteMensualPdf');
+        Route::get('/descargarReporteMensualExcel', [GrupoClienteController::class, 'descargarReporteMensualExcel'])->name('grupoCliente.descargarReporteMensualExcel');
+
     });
 });
 

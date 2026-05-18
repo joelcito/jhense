@@ -53,77 +53,80 @@
                 <a class="nav-link active" id="pills-servicios-tab" data-toggle="pill" href="#pills-servicios" role="tab" aria-controls="pills-servicios" aria-selected="true">Servicios</a>
             </li>
             <li class="nav-item">
-                <a class="nav-link" id="pills-recepcion-tab" data-toggle="pill" href="#pills-recepcion" role="tab" aria-controls="pills-recepcion" aria-selected="false">Orden de Recepción</a>
+                <a class="nav-link" id="pills-recepcion-tab" data-toggle="pill" href="#pills-recepcion" role="tab" aria-controls="pills-recepcion" aria-selected="false">Ordenes</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" id="pills-reportes-tab" data-toggle="pill" href="#pills-reportes" role="tab" aria-controls="pills-reportes" aria-selected="false">Reporte Mensual</a>
             </li>
         </ul>
         <div class="tab-content" id="pills-tabContent">
             <div class="tab-pane fade show active" id="pills-servicios" role="tabpanel" aria-labelledby="pills-servicios-tab">
                 <div class="card border-info">
-    <div class="card-header bg-info">
-        <h4 class="mb-0 text-white">
-            SERVICIOS DE CLIENTE &nbsp;&nbsp;
-            <button type="button" class="btn waves-effect waves-light btn-sm btn-success" onclick="cargarServicios()"><i
-                    class="fas fa-plus"></i> &nbsp; CARGAR SERVICIOS</button>
-        </h4>
-    </div>
-    <div class="card-body">
-        <div class="row">
-            <div class="col-md-12">
-                <h4 class="text-info">Cliente: {{ $grupoCliente->cliente->nombres ?? '' }} {{ $grupoCliente->cliente->ap_paterno ?? '' }} {{ $grupoCliente->cliente->ap_materno ?? '' }}</h4>
-                <h4 class="text-info">Grupo: {{ $grupo->nombre }}</h4>
-                <h4 class="text-info">Monto Inicio: {{ $grupoCliente->monto_inicio ? number_format($grupoCliente->monto_inicio, 2) . ' Bs.' : '0.00 Bs.' }}</h4>
-            </div>
-        </div>
-        <form id="formularioItemRangos">
-            <div class="row">
-                <div class="col-md-2">
-                    <div class="form-group">
-                        <label class="control-label">1° Rango Item</label>
-                        <span class="text-danger">
-                            <i class="mr-2 mdi mdi-alert-circle"></i>
-                        </span>
-                        <input type="number" name="item_1" id="item_1" class="form-control" >
-                        <div class="text-danger error-message" id="error-item_1"></div>
+                    <div class="card-header bg-info">
+                        <h4 class="mb-0 text-white">
+                            SERVICIOS DE CLIENTE &nbsp;&nbsp;
+                            <button type="button" class="btn waves-effect waves-light btn-sm btn-success" onclick="cargarServicios()"><i
+                                    class="fas fa-plus"></i> &nbsp; CARGAR SERVICIOS</button>
+                        </h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-12">
+                                <h4 class="text-info">Cliente: {{ $grupoCliente->cliente->nombres ?? '' }} {{ $grupoCliente->cliente->ap_paterno ?? '' }} {{ $grupoCliente->cliente->ap_materno ?? '' }}</h4>
+                                <h4 class="text-info">Grupo: {{ $grupo->nombre }}</h4>
+                                <h4 class="text-info">Monto Inicio: {{ $grupoCliente->monto_inicio ? number_format($grupoCliente->monto_inicio, 2) . ' Bs.' : '0.00 Bs.' }}</h4>
+                            </div>
+                        </div>
+                        <form id="formularioItemRangos">
+                            <div class="row">
+                                <div class="col-md-2">
+                                    <div class="form-group">
+                                        <label class="control-label">1° Rango Item</label>
+                                        <span class="text-danger">
+                                            <i class="mr-2 mdi mdi-alert-circle"></i>
+                                        </span>
+                                        <input type="number" name="item_1" id="item_1" class="form-control" >
+                                        <div class="text-danger error-message" id="error-item_1"></div>
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <div class="form-group">
+                                        <label class="control-label">2° Rango Item</label>
+                                        <span class="text-danger">
+                                            <i class="mr-2 mdi mdi-alert-circle"></i>
+                                        </span>
+                                        <input type="number" name="item_2" id="item_2" class="form-control" >
+                                        <div class="text-danger error-message" id="error-item_2"></div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="form-group">
+                                        <label class="control-label">Categoria</label>
+                                        <span class="text-danger">
+                                            <i class="mr-2 mdi mdi-alert-circle"></i>
+                                        </span>
+                                        <select name="categoria" id="categoria" class="form-control"
+                                            required>
+                                            <option value="">Seleccione</option>
+                                            <option value="PREVENTIVO">PREVENTIVO</option>
+                                            <option value="CORRECTIVO">CORRECTIVO</option>
+                                            <option value="SUMINISTRO">SUMINISTRO</option>
+                                            <option value="REPUESTOS">REPUESTOS</option>
+                                            <option value="OTROS">OTROS</option>
+                                        </select>
+                                        <div class="text-danger error-message" id="error-categoria"></div>
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="control-label text-white">.</label>
+                                    <button type="button" class="btn waves-effect waves-light btn-block btn-success"
+                                        onclick="guardarItemRangos()">GUARDAR</button>
+                                </div>
+                            </div>
+                        </form>
+                        <div id="tabla_detalles"></div>
                     </div>
                 </div>
-                <div class="col-md-2">
-                    <div class="form-group">
-                        <label class="control-label">2° Rango Item</label>
-                        <span class="text-danger">
-                            <i class="mr-2 mdi mdi-alert-circle"></i>
-                        </span>
-                        <input type="number" name="item_2" id="item_2" class="form-control" >
-                        <div class="text-danger error-message" id="error-item_2"></div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="form-group">
-                        <label class="control-label">Categoria</label>
-                        <span class="text-danger">
-                            <i class="mr-2 mdi mdi-alert-circle"></i>
-                        </span>
-                        <select name="categoria" id="categoria" class="form-control"
-                            required>
-                            <option value="">Seleccione</option>
-                            <option value="PREVENTIVO">PREVENTIVO</option>
-                            <option value="CORRECTIVO">CORRECTIVO</option>
-                            <option value="SUMINISTRO">SUMINISTRO</option>
-                            <option value="REPUESTOS">REPUESTOS</option>
-                            <option value="OTROS">OTROS</option>
-                        </select>
-                        <div class="text-danger error-message" id="error-categoria"></div>
-                    </div>
-                </div>
-                <div class="col-md-2">
-                    <label class="control-label text-white">.</label>
-                    <button type="button" class="btn waves-effect waves-light btn-block btn-success"
-                        onclick="guardarItemRangos()">GUARDAR</button>
-                </div>
-            </div>
-        </form>
-        <div id="tabla_detalles"></div>
-    </div>
-</div>
             </div>
             
             <div class="tab-pane fade" id="pills-recepcion" role="tabpanel" aria-labelledby="pills-recepcion-tab">
@@ -208,6 +211,9 @@
                         <li class="nav-item">
                             <a class="nav-link" id="pills-form9-tab" data-toggle="pill" href="#pills-form9" role="tab" aria-controls="pills-form9" aria-selected="false">9. Acta Entrega</a>
                         </li>
+                        <li class="nav-item">
+                            <a class="nav-link" id="pills-form10-tab" data-toggle="pill" href="#pills-form10" role="tab" aria-controls="pills-form10" aria-selected="false">10. Devolución Repuestos</a>
+                        </li>
                         <!-- Aquí se agregarán los demás formularios -->
                     </ul>
                     
@@ -255,6 +261,47 @@
                         <!-- FORM 10: ACTA DE ENTREGA -->
                         <div class="tab-pane fade" id="pills-form9" role="tabpanel" aria-labelledby="pills-form9-tab">
                             @include('grupoCliente.formularios.actaEntrega')
+                        </div>
+
+                        <!-- FORM 11: ACTA DE DEVOLUCIÓN DE REPUESTOS -->
+                        <div class="tab-pane fade" id="pills-form10" role="tabpanel" aria-labelledby="pills-form10-tab">
+                            @include('grupoCliente.formularios.actaDevolucionRepuesto')
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="tab-pane fade" id="pills-reportes" role="tabpanel" aria-labelledby="pills-reportes-tab">
+                <div class="card border-success">
+                    <div class="card-header bg-success">
+                        <h4 class="mb-0 text-white">REPORTE MENSUAL DE MANTENIMIENTO</h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="row align-items-end mb-4">
+                            <div class="col-md-3">
+                                <label class="font-weight-bold">Mes</label>
+                                <select id="filtro_mes" class="form-control">
+                                    @for($i=1; $i<=12; $i++)
+                                        <option value="{{ str_pad($i, 2, '0', STR_PAD_LEFT) }}" {{ date('m') == $i ? 'selected' : '' }}>
+                                            {{ \Carbon\Carbon::create()->month($i)->translatedFormat('F') }}
+                                        </option>
+                                    @endfor
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="font-weight-bold">Año</label>
+                                <select id="filtro_anio" class="form-control">
+                                    @for($i=date('Y'); $i>=date('Y')-5; $i--)
+                                        <option value="{{ $i }}">{{ $i }}</option>
+                                    @endfor
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <button type="button" class="btn btn-primary btn-block" onclick="generarReporteMensual('pdf')"><i class="fas fa-file-pdf"></i> Generar PDF</button>
+                            </div>
+                            <div class="col-md-3">
+                                <button type="button" class="btn btn-success btn-block" onclick="generarReporteMensual('excel')"><i class="fas fa-file-excel"></i> Generar Excel</button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -501,6 +548,22 @@
         } else {
             $("#formulario_importar_servicios_excel")[0].reportValidity();
         }
+    }
+
+    function generarReporteMensual(tipo) {
+        let mes = $('#filtro_mes').val();
+        let anio = $('#filtro_anio').val();
+        let grupoClienteId = "{{ $grupoCliente->id }}";
+        
+        let url = "";
+        if(tipo === 'pdf') {
+            url = "{{ route('grupoCliente.descargarReporteMensualPdf') }}";
+        } else {
+            url = "{{ route('grupoCliente.descargarReporteMensualExcel') }}";
+        }
+        
+        url += "?grupo_cliente_id=" + grupoClienteId + "&mes=" + mes + "&anio=" + anio;
+        window.open(url, '_blank');
     }
 
 </script>
