@@ -79,6 +79,11 @@
                                 <i data-feather="home" class="feather-icon"></i><span class="hide-menu"> Consultas </span>
                             </a>
                         </li>
+                        <li class="sidebar-item">
+                            <a href='{{ route('producto.listado') }}' class="sidebar-link">
+                                <i data-feather="home" class="feather-icon"></i><span class="hide-menu"> Productos </span>
+                            </a>
+                        </li>
                     </ul>
                 </li>
 

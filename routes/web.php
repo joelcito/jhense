@@ -8,6 +8,7 @@ use App\Http\Controllers\ConsultaController;
 use App\Http\Controllers\GrupoClienteController;
 use App\Http\Controllers\GrupoController;
 use App\Http\Controllers\MarcaController;
+use App\Http\Controllers\ProductoController;
 use App\Http\Controllers\RolController;
 use App\Http\Controllers\SucursalController;
 use App\Http\Controllers\UserController;
@@ -82,6 +83,26 @@ Route::middleware('auth')->group(function () {
         Route::post('/ajaxListado', [ConsultaController::class, 'ajaxListado'])->name('consulta.ajaxListado');
         Route::post('/guardarConsulta', [ConsultaController::class, 'guardarConsulta'])->name('consulta.guardarConsulta');
         Route::post('/eliminarConsulta', [ConsultaController::class, 'eliminarConsulta'])->name('consulta.eliminarConsulta');
+    });
+    // PRODUCTO
+    Route::prefix('/producto')->group(function () {
+        Route::get('/listado', [ProductoController::class, 'listado'])->name('producto.listado');
+        Route::post('/ajaxListado', [ProductoController::class, 'ajaxListado'])->name('producto.ajaxListado');
+        Route::post('/guardarProducto', [ProductoController::class, 'guardarProducto'])->name('producto.guardarProducto');
+        Route::post('/eliminarProducto', [ProductoController::class, 'eliminarProducto'])->name('producto.eliminarProducto');
+
+        Route::post('/guardarStockSucursal', [ProductoController::class, 'guardarStockSucursal'])->name('producto.guardarStockSucursal');
+        Route::post('/ajaxStockSucursal', [ProductoController::class, 'ajaxStockSucursal'])->name('producto.ajaxStockSucursal');
+        Route::post('/ajaxFormTransferencia', [ProductoController::class, 'ajaxFormTransferencia'])->name('producto.ajaxFormTransferencia');
+        Route::post('/guardarTransferenciaSucursal', [ProductoController::class, 'guardarTransferenciaSucursal'])->name('producto.guardarTransferenciaSucursal');
+        Route::post('/guardarSalidaSucursal', [ProductoController::class, 'guardarSalidaSucursal'])->name('producto.guardarSalidaSucursal');
+
+        Route::get('/pdfProductoStock', [ProductoController::class, 'pdfProductoStock'])->name('producto.pdfProductoStock');
+
+        Route::post('/generarReporteIngreso', [ProductoController::class, 'generarReporteIngreso'])->name('producto.generarReporteIngreso');
+        Route::post('/generarReporteSalida', [ProductoController::class, 'generarReporteSalida'])->name('producto.generarReporteSalida');
+
+        Route::post('/importarServiciosProductosExcel', [ProductoController::class, 'importarServiciosProductosExcel'])->name('producto.importarServiciosProductosExcel');
     });
 
     //ADICICONES POR SUCURSAL
@@ -169,7 +190,6 @@ Route::middleware('auth')->group(function () {
 
         Route::get('/descargarReporteMensualPdf', [GrupoClienteController::class, 'descargarReporteMensualPdf'])->name('grupoCliente.descargarReporteMensualPdf');
         Route::get('/descargarReporteMensualExcel', [GrupoClienteController::class, 'descargarReporteMensualExcel'])->name('grupoCliente.descargarReporteMensualExcel');
-
     });
 });
 

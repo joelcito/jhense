@@ -528,7 +528,8 @@ class GrupoClienteController extends Controller
 
         $pdf = Pdf::loadView('grupoCliente.formularios.pdfOrdenRecepcion', compact('orden'));
 
-        return $pdf->download('Orden_Recepcion_' . $orden->id . '.pdf');
+        $fileName = $this->generarNombreArchivo('Orden de Recepcion', $orden);
+        return $pdf->download($fileName . '.pdf');
     }
 
     public function descargarExcelOrdenRecepcion($id)
@@ -648,7 +649,7 @@ class GrupoClienteController extends Controller
             $hoja->getColumnDimension($col)->setAutoSize(true);
         }
 
-        $fileName = 'Orden_Recepcion_' . $orden->id . '.xlsx';
+        $fileName = $this->generarNombreArchivo('Orden de Recepcion', $orden) . '.xlsx';
         header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         header('Content-Disposition: attachment;filename="' . $fileName . '"');
         header('Cache-Control: max-age=0');
@@ -765,15 +766,18 @@ class GrupoClienteController extends Controller
         $informe = InformeDiagnostico::with(['mecanico', 'ordenRecepcion.grupoCliente.cliente', 'ordenRecepcion.auto.marca'])
             ->where('orden_recepcion_id', $orden_id)->firstOrFail();
 
+        $orden = $informe->ordenRecepcion;
         $pdf = Pdf::loadView('grupoCliente.formularios.pdfInformeDiagnostico', compact('informe'));
 
-        return $pdf->download('Informe_Diagnostico_' . $informe->id . '.pdf');
+        $fileName = $this->generarNombreArchivo('Informe de Diagnostico', $orden);
+        return $pdf->download($fileName . '.pdf');
     }
 
     public function descargarExcelInformeDiagnostico($orden_id)
     {
         $informe = InformeDiagnostico::with(['mecanico', 'ordenRecepcion.grupoCliente.cliente', 'ordenRecepcion.auto.marca'])
             ->where('orden_recepcion_id', $orden_id)->firstOrFail();
+        $orden = $informe->ordenRecepcion;
 
         $libro = new Spreadsheet();
         $hoja = $libro->getActiveSheet();
@@ -870,7 +874,7 @@ class GrupoClienteController extends Controller
             $hoja->getColumnDimension($columnID)->setAutoSize(true);
         }
 
-        $fileName = 'Informe_Diagnostico_' . $informe->id . '.xlsx';
+        $fileName = $this->generarNombreArchivo('Informe de Diagnostico', $orden) . '.xlsx';
         header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         header('Content-Disposition: attachment;filename="' . $fileName . '"');
         header('Cache-Control: max-age=0');
@@ -948,7 +952,8 @@ class GrupoClienteController extends Controller
 
         $pdf = Pdf::loadView('grupoCliente.formularios.pdfFormularioDiagnostico', compact('form', 'orden'));
 
-        return $pdf->download('Formulario_Diagnostico_' . $form->id . '.pdf');
+        $fileName = $this->generarNombreArchivo('Formulario de Diagnostico', $orden);
+        return $pdf->download($fileName . '.pdf');
     }
 
     public function descargarExcelFormularioDiagnostico($orden_id)
@@ -1148,7 +1153,7 @@ class GrupoClienteController extends Controller
         $hoja->getStyle('F' . $invRow)->getAlignment()->setWrapText(true)->setVertical(\PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_TOP);
 
 
-        $fileName = 'Formulario_Diagnostico_' . $form->id . '.xlsx';
+        $fileName = $this->generarNombreArchivo('Formulario de Diagnostico', $orden) . '.xlsx';
         header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         header('Content-Disposition: attachment;filename="' . $fileName . '"');
         header('Cache-Control: max-age=0');
@@ -1228,7 +1233,8 @@ class GrupoClienteController extends Controller
 
         $pdf = Pdf::loadView('grupoCliente.formularios.pdfCotizacion', compact('cotizacion', 'orden'));
 
-        return $pdf->download('Cotizacion_' . $cotizacion->id . '.pdf');
+        $fileName = $this->generarNombreArchivo('Cotizacion', $orden);
+        return $pdf->download($fileName . '.pdf');
     }
 
     public function descargarExcelCotizacion($orden_id)
@@ -1357,7 +1363,7 @@ class GrupoClienteController extends Controller
         $hoja->getStyle('D' . $row . ':F' . $row)->getFont()->setBold(true);
         $hoja->getStyle('D' . $row . ':E' . $row)->applyFromArray($right);
 
-        $fileName = 'Cotizacion_' . $cotizacion->id . '.xlsx';
+        $fileName = $this->generarNombreArchivo('Cotizacion', $orden) . '.xlsx';
         header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         header('Content-Disposition: attachment;filename="' . $fileName . '"');
         header('Cache-Control: max-age=0');
@@ -1446,7 +1452,8 @@ class GrupoClienteController extends Controller
 
         $pdf = Pdf::loadView('grupoCliente.formularios.pdfOrdenTrabajo', compact('cotizacion', 'orden'));
 
-        return $pdf->download('OrdenTrabajo_' . $cotizacion->id . '.pdf');
+        $fileName = $this->generarNombreArchivo('Orden de Trabajo', $orden);
+        return $pdf->download($fileName . '.pdf');
     }
 
     public function descargarExcelOrdenTrabajo($orden_id)
@@ -1562,7 +1569,7 @@ class GrupoClienteController extends Controller
         $hoja->getStyle('D' . $row . ':F' . $row)->getFont()->setBold(true);
         $hoja->getStyle('D' . $row . ':E' . $row)->applyFromArray($right);
 
-        $fileName = 'OrdenTrabajo_' . $cotizacion->id . '.xlsx';
+        $fileName = $this->generarNombreArchivo('Orden de Trabajo', $orden) . '.xlsx';
         header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         header('Content-Disposition: attachment;filename="' . $fileName . '"');
         header('Cache-Control: max-age=0');
@@ -1722,7 +1729,8 @@ class GrupoClienteController extends Controller
         $ot->trabajos_tercero = is_string($ot->trabajos_tercero) ? json_decode($ot->trabajos_tercero, true) : $ot->trabajos_tercero;
 
         $pdf = Pdf::loadView('grupoCliente.formularios.pdfOrdenTrabajoOficial', compact('ot', 'orden'));
-        return $pdf->download('OrdenTrabajoOficial_' . $ot->id . '.pdf');
+        $fileName = $this->generarNombreArchivo('Orden de Trabajo Oficial', $orden);
+        return $pdf->download($fileName . '.pdf');
     }
 
     public function descargarExcelOrdenTrabajoOficial($id)
@@ -1838,7 +1846,7 @@ class GrupoClienteController extends Controller
         $hoja->getStyle('D' . $row . ':F' . $row)->getFont()->setBold(true);
         $hoja->getStyle('D' . $row . ':E' . $row)->applyFromArray($right);
 
-        $fileName = 'OrdenTrabajoOficial_' . $ot->id . '.xlsx';
+        $fileName = $this->generarNombreArchivo('Orden de Trabajo Oficial', $orden) . '.xlsx';
         header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         header('Content-Disposition: attachment;filename="' . $fileName . '"');
         header('Cache-Control: max-age=0');
@@ -1992,7 +2000,8 @@ class GrupoClienteController extends Controller
         $ot = OrdenTrabajo::where('orden_recepcion_id', $fa->orden_recepcion_id)->first();
 
         $pdf = Pdf::loadView('grupoCliente.formularios.pdfFormularioAutorizacion', compact('fa', 'orden', 'ot'));
-        return $pdf->download('FormularioAutorizacion_' . $fa->id . '.pdf');
+        $fileName = $this->generarNombreArchivo('Formulario de Autorizacion', $orden);
+        return $pdf->download($fileName . '.pdf');
     }
 
     public function descargarExcelFormularioAutorizacion($id)
@@ -2162,7 +2171,7 @@ class GrupoClienteController extends Controller
         $hoja->getStyle('A' . $row)->getAlignment()->setVertical(\PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_TOP);
         $row += 4;
 
-        $fileName = 'FormularioAutorizacion_' . $fa->id . '.xlsx';
+        $fileName = $this->generarNombreArchivo('Formulario de Autorizacion', $orden) . '.xlsx';
         header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         header('Content-Disposition: attachment;filename="' . $fileName . '"');
         header('Cache-Control: max-age=0');
@@ -2277,7 +2286,8 @@ class GrupoClienteController extends Controller
         }
 
         $pdf = Pdf::loadView('grupoCliente.formularios.pdfRecepcionRepuesto', compact('rr', 'orden', 'repuestosVisible', 'numOt'));
-        return $pdf->download('RecepcionRepuesto_' . $rr->id . '.pdf');
+        $fileName = $this->generarNombreArchivo('Recepcion de Repuestos', $orden);
+        return $pdf->download($fileName . '.pdf');
     }
 
     public function descargarExcelRecepcionRepuesto($id)
@@ -2410,7 +2420,7 @@ class GrupoClienteController extends Controller
         $hoja->getStyle('A' . $row)->getAlignment()->setVertical(\PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_TOP);
         $row += 4;
 
-        $fileName = 'RecepcionRepuesto_' . $rr->id . '.xlsx';
+        $fileName = $this->generarNombreArchivo('Recepcion de Repuestos', $orden) . '.xlsx';
         header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         header('Content-Disposition: attachment;filename="' . $fileName . '"');
         header('Cache-Control: max-age=0');
@@ -2530,7 +2540,8 @@ class GrupoClienteController extends Controller
             ])
         );
 
-        return $pdf->download('ReporteFotografico_' . $rf->id . '.pdf');
+        $fileName = $this->generarNombreArchivo('Reporte Fotografico', $orden);
+        return $pdf->download($fileName . '.pdf');
     }
 
     public function descargarExcelReporteFotografico($id)
@@ -2656,7 +2667,7 @@ class GrupoClienteController extends Controller
             }
         }
 
-        $fileName = 'ReporteFotografico_' . $rf->id . '.xlsx';
+        $fileName = $this->generarNombreArchivo('Reporte Fotografico', $orden) . '.xlsx';
         header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         header('Content-Disposition: attachment;filename="' . $fileName . '"');
         header('Cache-Control: max-age=0');
@@ -2768,7 +2779,8 @@ class GrupoClienteController extends Controller
         }
 
         $pdf = Pdf::loadView('grupoCliente.formularios.pdfActaEntrega', compact('ae', 'orden', 'servicios', 'numOt'));
-        return $pdf->download('ActaEntrega_' . $ae->id . '.pdf');
+        $fileName = $this->generarNombreArchivo('Acta de Entrega', $orden);
+        return $pdf->download($fileName . '.pdf');
     }
 
     public function descargarExcelActaEntrega($id)
@@ -2894,7 +2906,7 @@ class GrupoClienteController extends Controller
         $hoja->getStyle('D' . $row)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
         $hoja->getStyle('D' . ($row - 1))->getBorders()->getBottom()->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN);
 
-        $fileName = 'ActaEntrega_' . $ae->id . '.xlsx';
+        $fileName = $this->generarNombreArchivo('Acta de Entrega', $orden) . '.xlsx';
         header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         header('Content-Disposition: attachment;filename="' . $fileName . '"');
         header('Cache-Control: max-age=0');
@@ -3006,7 +3018,8 @@ class GrupoClienteController extends Controller
         });
 
         $pdf = Pdf::loadView('grupoCliente.formularios.pdfActaDevolucionRepuesto', compact('adr', 'orden', 'repuestosVisibles', 'numOt'));
-        return $pdf->download('ActaDevolucionRepuesto_' . $adr->id . '.pdf');
+        $fileName = $this->generarNombreArchivo('Acta Devolucion de Repuestos', $orden);
+        return $pdf->download($fileName . '.pdf');
     }
 
     public function descargarExcelActaDevolucionRepuesto($id)
@@ -3131,7 +3144,7 @@ class GrupoClienteController extends Controller
         $hoja->getStyle('E' . $row)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
         $hoja->getStyle('E' . ($row - 1))->getBorders()->getBottom()->setBorderStyle(\PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN);
 
-        $fileName = 'ActaDevolucionRepuestos_' . $adr->id . '.xlsx';
+        $fileName = $this->generarNombreArchivo('Acta Devolucion de Repuestos', $orden) . '.xlsx';
         header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         header('Content-Disposition: attachment;filename="' . $fileName . '"');
         header('Cache-Control: max-age=0');
@@ -3255,7 +3268,8 @@ class GrupoClienteController extends Controller
         $pdf = Pdf::loadView('grupoCliente.formularios.pdfReporteMensual', compact('grupoCliente', 'grupo', 'ordenesTrabajo', 'resumen', 'mes', 'nombreMes', 'anio'))
             ->setPaper('a4', 'landscape'); // Lo ponemos apaisado para que entren las columnas
 
-        return $pdf->download('Reporte_Mensual_' . $nombreMes . '_' . $anio . '.pdf');
+        $fileName = $this->generarNombreArchivo('Reporte Mensual ' . $nombreMes . ' ' . $anio, null, $grupoCliente);
+        return $pdf->download($fileName . '.pdf');
     }
 
     public function descargarReporteMensualExcel(Request $request)
@@ -3494,7 +3508,7 @@ class GrupoClienteController extends Controller
 
         $libro->setActiveSheetIndex(0);
 
-        $fileName = 'Reporte_Mensual_' . $nombreMes . '_' . $anio . '.xlsx';
+        $fileName = $this->generarNombreArchivo('Reporte Mensual ' . $nombreMes . ' ' . $anio, null, $grupoCliente) . '.xlsx';
         header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         header('Content-Disposition: attachment;filename="' . $fileName . '"');
         header('Cache-Control: max-age=0');
@@ -3689,5 +3703,22 @@ class GrupoClienteController extends Controller
             $adr->usuario_modificador_id = $usuario_id;
             $adr->save();
         }
+    }
+
+    private function generarNombreArchivo($titulo, $orden = null, $grupoCliente = null)
+    {
+        if ($orden) {
+            $placa = $orden->auto->placa ?? 'SIN_PLACA';
+            $nombres = trim(($orden->grupoCliente->cliente->nombres ?? '') . ' ' . ($orden->grupoCliente->cliente->ap_paterno ?? ''));
+        } else if ($grupoCliente) {
+            $placa = 'SIN_PLACA';
+            $nombres = trim(($grupoCliente->cliente->nombres ?? '') . ' ' . ($grupoCliente->cliente->ap_paterno ?? ''));
+        } else {
+            $placa = 'SIN_PLACA';
+            $nombres = 'SIN_NOMBRE';
+        }
+
+        $fileName = $placa . ' - ' . $nombres . ' - ' . $titulo;
+        return preg_replace('/[\/\\\:\*\?\"\<\>\|]/', '-', $fileName);
     }
 }
