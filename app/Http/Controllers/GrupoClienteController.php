@@ -1193,6 +1193,8 @@ class GrupoClienteController extends Controller
 
             $cotizacion->save();
 
+            $this->sincronizarCotizacionYOT('COTIZACION', $cotizacion->orden_recepcion_id, $usuario->id);
+
             return response()->json([
                 'estado' => true,
                 'cotizacion_id' => $cotizacion->id
@@ -1426,6 +1428,7 @@ class GrupoClienteController extends Controller
         $cotizacion->repuestos = json_encode($nuevosRep);
         $cotizacion->save();
 
+
         // Para el uso en json/vista devolvemos como arrays
         $cotizacion->preventivos = $nuevosPrev;
         $cotizacion->correctivos = $nuevosCorr;
@@ -1619,6 +1622,8 @@ class GrupoClienteController extends Controller
             $ot->total_general             = $request->input('total_general', 0);
 
             $ot->save();
+
+            $this->sincronizarCotizacionYOT('OT', $ot->orden_recepcion_id, $usuario->id);
 
             $numStr = $ot->numero_orden_secuencial . '/' . $ot->anio;
 
@@ -3076,7 +3081,7 @@ class GrupoClienteController extends Controller
         $hoja->setCellValue('A' . $row, 'DETALLE DE ACTIVIDADES DEL VEHICULO');
         $hoja->getStyle('A' . $row)->getFont()->setBold(true);
         $row++;
-        
+
         $hoja->setCellValue('A' . $row, 'De acuerdo a ingreso y salida de vehiculo motorizado con placa de control detallado en el presente documento, a continuacion se detalla cada uno de los REPUESTOS A DEVOLVER:');
         $hoja->mergeCells('A' . $row . ':F' . ($row + 1));
         $hoja->getStyle('A' . $row)->getAlignment()->setWrapText(true);
@@ -3150,15 +3155,15 @@ class GrupoClienteController extends Controller
         ];
 
         // Función auxiliar para sumar costos
-        $procesarArreglo = function($items) use (&$categorias, $serviciosCliente) {
+        $procesarArreglo = function ($items) use (&$categorias, $serviciosCliente) {
             if (!$items || !is_array($items)) return;
             foreach ($items as $item) {
                 $nombre = $item['nombre'] ?? '';
                 $costo = floatval($item['total'] ?? $item['costo_total'] ?? 0);
-                
+
                 // Buscar en el catálogo
                 $cat = $serviciosCliente[$nombre] ?? 'OTROS'; // default a OTROS
-                
+
                 if (array_key_exists($cat, $categorias)) {
                     $categorias[$cat] += $costo;
                 } else if ($cat == 'SUMINISTRO') {
@@ -3228,9 +3233,9 @@ class GrupoClienteController extends Controller
                 $ot->repuestos = is_string($ot->repuestos) ? json_decode($ot->repuestos, true) : $ot->repuestos;
                 $ot->insumos = is_string($ot->insumos) ? json_decode($ot->insumos, true) : $ot->insumos;
                 $ot->trabajos_tercero = is_string($ot->trabajos_tercero) ? json_decode($ot->trabajos_tercero, true) : $ot->trabajos_tercero;
-                
+
                 $ot->orden = $orden;
-                
+
                 $catCostos = $this->agruparItemsPorCategoria($ot, $serviciosCliente);
                 $ot->costos_categorizados = $catCostos;
 
@@ -3249,7 +3254,7 @@ class GrupoClienteController extends Controller
 
         $pdf = Pdf::loadView('grupoCliente.formularios.pdfReporteMensual', compact('grupoCliente', 'grupo', 'ordenesTrabajo', 'resumen', 'mes', 'nombreMes', 'anio'))
             ->setPaper('a4', 'landscape'); // Lo ponemos apaisado para que entren las columnas
-        
+
         return $pdf->download('Reporte_Mensual_' . $nombreMes . '_' . $anio . '.pdf');
     }
 
@@ -3290,7 +3295,7 @@ class GrupoClienteController extends Controller
                 $ot->repuestos = is_string($ot->repuestos) ? json_decode($ot->repuestos, true) : $ot->repuestos;
                 $ot->insumos = is_string($ot->insumos) ? json_decode($ot->insumos, true) : $ot->insumos;
                 $ot->trabajos_tercero = is_string($ot->trabajos_tercero) ? json_decode($ot->trabajos_tercero, true) : $ot->trabajos_tercero;
-                
+
                 $ot->orden = $orden;
 
                 $catCostos = $this->agruparItemsPorCategoria($ot, $serviciosCliente);
@@ -3310,7 +3315,7 @@ class GrupoClienteController extends Controller
         $nombreMes = $meses[(int)$mes] ?? '';
 
         $libro = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
-        
+
         $borderThin  = ['borders' => ['allBorders' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN]]];
 
         // --- HOJA 1: RESUMEN MENSUAL ---
@@ -3339,11 +3344,17 @@ class GrupoClienteController extends Controller
 
         $row = 3;
         $headers = [
-            'PLACA', 'Kilometraje', 'N° de Orden', 
-            'Mantenimiento Preventivo', 'Mantenimiento Correctivo', 'Repuestos', 
-            'Otros Ajustes', 'Total Reparaciones', 'Sumatoria Total Bs'
+            'PLACA',
+            'Kilometraje',
+            'N° de Orden',
+            'Mantenimiento Preventivo',
+            'Mantenimiento Correctivo',
+            'Repuestos',
+            'Otros Ajustes',
+            'Total Reparaciones',
+            'Sumatoria Total Bs'
         ];
-        
+
         $col = 'A';
         foreach ($headers as $h) {
             $hojaResumen->setCellValue($col . $row, $h);
@@ -3353,26 +3364,26 @@ class GrupoClienteController extends Controller
             $hojaResumen->getStyle($col . $row)->getAlignment()->setWrapText(true);
             $col++;
         }
-        $hojaResumen->getStyle('A'.$row.':I'.$row)->applyFromArray($borderThin);
+        $hojaResumen->getStyle('A' . $row . ':I' . $row)->applyFromArray($borderThin);
         $row++;
 
         foreach ($ordenesTrabajo as $ot) {
             $cat = $ot->costos_categorizados;
-            
+
             $hojaResumen->setCellValue('A' . $row, $ot->orden->auto->placa ?? '');
             $hojaResumen->setCellValue('B' . $row, $ot->orden->kilometraje ?? '');
             $hojaResumen->setCellValue('C' . $row, $ot->numero_orden_secuencial);
-            
+
             $hojaResumen->setCellValue('D' . $row, number_format($cat['PREVENTIVO'], 2, '.', ''));
             $hojaResumen->setCellValue('E' . $row, number_format($cat['CORRECTIVO'], 2, '.', ''));
             $hojaResumen->setCellValue('F' . $row, number_format($cat['REPUESTOS'], 2, '.', ''));
             $hojaResumen->setCellValue('G' . $row, number_format($cat['OTROS'], 2, '.', ''));
-            
+
             $hojaResumen->setCellValue('H' . $row, number_format($cat['TOTAL_REPARACIONES'], 2, '.', ''));
             $hojaResumen->setCellValue('I' . $row, number_format($cat['SUMATORIA_TOTAL'], 2, '.', ''));
-            
-            $hojaResumen->getStyle('A'.$row.':I'.$row)->applyFromArray($borderThin);
-            $hojaResumen->getStyle('D'.$row.':I'.$row)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_RIGHT);
+
+            $hojaResumen->getStyle('A' . $row . ':I' . $row)->applyFromArray($borderThin);
+            $hojaResumen->getStyle('D' . $row . ':I' . $row)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_RIGHT);
             $row++;
         }
 
@@ -3430,39 +3441,39 @@ class GrupoClienteController extends Controller
             $hoja->getStyle('A' . $row)->getFont()->setBold(true);
             $row += 2;
 
-            $renderSection = function($title, $items, $subtotal) use (&$hoja, &$row, $borderThin) {
+            $renderSection = function ($title, $items, $subtotal) use (&$hoja, &$row, $borderThin) {
                 if ($items && count($items) > 0) {
-                    $hoja->setCellValue('A'.$row, $title);
-                    $hoja->mergeCells('A'.$row.':E'.$row);
-                    $hoja->getStyle('A'.$row)->getFont()->setBold(true);
-                    $hoja->getStyle('A'.$row.':E'.$row)->applyFromArray($borderThin);
-                    $hoja->getStyle('A'.$row.':E'.$row)->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setARGB('FFD9D9D9');
+                    $hoja->setCellValue('A' . $row, $title);
+                    $hoja->mergeCells('A' . $row . ':E' . $row);
+                    $hoja->getStyle('A' . $row)->getFont()->setBold(true);
+                    $hoja->getStyle('A' . $row . ':E' . $row)->applyFromArray($borderThin);
+                    $hoja->getStyle('A' . $row . ':E' . $row)->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setARGB('FFD9D9D9');
                     $row++;
 
-                    $hoja->setCellValue('A'.$row, 'N°');
-                    $hoja->setCellValue('B'.$row, 'DESCRIPCIÓN');
-                    $hoja->mergeCells('B'.$row.':D'.$row);
-                    $hoja->setCellValue('E'.$row, 'COSTO');
-                    $hoja->getStyle('A'.$row.':E'.$row)->getFont()->setBold(true);
-                    $hoja->getStyle('A'.$row.':E'.$row)->applyFromArray($borderThin);
-                    $hoja->getStyle('A'.$row.':E'.$row)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+                    $hoja->setCellValue('A' . $row, 'N°');
+                    $hoja->setCellValue('B' . $row, 'DESCRIPCIÓN');
+                    $hoja->mergeCells('B' . $row . ':D' . $row);
+                    $hoja->setCellValue('E' . $row, 'COSTO');
+                    $hoja->getStyle('A' . $row . ':E' . $row)->getFont()->setBold(true);
+                    $hoja->getStyle('A' . $row . ':E' . $row)->applyFromArray($borderThin);
+                    $hoja->getStyle('A' . $row . ':E' . $row)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
                     $row++;
 
                     $cont = 1;
                     foreach ($items as $item) {
-                        $hoja->setCellValue('A'.$row, $cont);
-                        $hoja->setCellValue('B'.$row, $item['nombre'] ?? '');
-                        $hoja->mergeCells('B'.$row.':D'.$row);
-                        $hoja->setCellValue('E'.$row, number_format($item['total'] ?? $item['costo_total'] ?? 0, 2));
-                        $hoja->getStyle('A'.$row.':E'.$row)->applyFromArray($borderThin);
+                        $hoja->setCellValue('A' . $row, $cont);
+                        $hoja->setCellValue('B' . $row, $item['nombre'] ?? '');
+                        $hoja->mergeCells('B' . $row . ':D' . $row);
+                        $hoja->setCellValue('E' . $row, number_format($item['total'] ?? $item['costo_total'] ?? 0, 2));
+                        $hoja->getStyle('A' . $row . ':E' . $row)->applyFromArray($borderThin);
                         $row++;
                         $cont++;
                     }
 
-                    $hoja->setCellValue('D'.$row, 'SUBTOTAL');
-                    $hoja->setCellValue('E'.$row, number_format($subtotal, 2));
-                    $hoja->getStyle('D'.$row.':E'.$row)->getFont()->setBold(true);
-                    $hoja->getStyle('D'.$row.':E'.$row)->applyFromArray($borderThin);
+                    $hoja->setCellValue('D' . $row, 'SUBTOTAL');
+                    $hoja->setCellValue('E' . $row, number_format($subtotal, 2));
+                    $hoja->getStyle('D' . $row . ':E' . $row)->getFont()->setBold(true);
+                    $hoja->getStyle('D' . $row . ':E' . $row)->applyFromArray($borderThin);
                     $row += 2;
                 }
             };
@@ -3472,11 +3483,11 @@ class GrupoClienteController extends Controller
             $renderSection('3 INSUMOS', $ot->insumos, $ot->subtotal_insumos);
             $renderSection('4 OTROS SERVICIOS REQUERIDOS', $ot->trabajos_tercero, $ot->subtotal_trabajos_tercero);
 
-            $hoja->setCellValue('D'.$row, 'TOTAL GENERAL');
-            $hoja->setCellValue('E'.$row, number_format($ot->total_general, 2));
-            $hoja->getStyle('D'.$row.':E'.$row)->getFont()->setBold(true);
-            $hoja->getStyle('D'.$row.':E'.$row)->applyFromArray($borderThin);
-            $hoja->getStyle('D'.$row.':E'.$row)->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setARGB('FFFFFF00');
+            $hoja->setCellValue('D' . $row, 'TOTAL GENERAL');
+            $hoja->setCellValue('E' . $row, number_format($ot->total_general, 2));
+            $hoja->getStyle('D' . $row . ':E' . $row)->getFont()->setBold(true);
+            $hoja->getStyle('D' . $row . ':E' . $row)->applyFromArray($borderThin);
+            $hoja->getStyle('D' . $row . ':E' . $row)->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setARGB('FFFFFF00');
 
             $sheetIndex++;
         }
@@ -3490,5 +3501,193 @@ class GrupoClienteController extends Controller
         $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($libro);
         $writer->save('php://output');
         exit;
+    }
+
+    /* ============================================================
+     * SINCRONIZACIÓN DE FORMULARIOS
+     * ============================================================ */
+
+    private function sincronizarCotizacionYOT($origen, $orden_recepcion_id, $usuario_id)
+    {
+        $orden = OrdenRecepcion::find($orden_recepcion_id);
+        if (!$orden) return;
+
+        $serviciosGrup = ClienteServicio::where('grupo_cliente_id', $orden->grupo_cliente_id)->get();
+        $mapaCategorias = [];
+        foreach ($serviciosGrup as $srv) {
+            $mapaCategorias[$srv->nombre] = strtoupper($srv->categoria);
+        }
+
+        $cotizacion = Cotizacion::where('orden_recepcion_id', $orden_recepcion_id)->first();
+        $ot = OrdenTrabajo::where('orden_recepcion_id', $orden_recepcion_id)->first();
+
+        // 1. Obtener la fuente de verdad y generar las listas agrupadas
+        $todosServicios = [];
+
+        if ($origen === 'COTIZACION' && $cotizacion) {
+            $prevs = is_string($cotizacion->preventivos) ? json_decode($cotizacion->preventivos, true) : ($cotizacion->preventivos ?? []);
+            $corrs = is_string($cotizacion->correctivos) ? json_decode($cotizacion->correctivos, true) : ($cotizacion->correctivos ?? []);
+            $reps  = is_string($cotizacion->repuestos) ? json_decode($cotizacion->repuestos, true) : ($cotizacion->repuestos ?? []);
+            $todosServicios = array_merge($prevs, $corrs, $reps);
+        } elseif ($origen === 'OT' && $ot) {
+            $mano = is_string($ot->mano_obra) ? json_decode($ot->mano_obra, true) : ($ot->mano_obra ?? []);
+            $reps = is_string($ot->repuestos) ? json_decode($ot->repuestos, true) : ($ot->repuestos ?? []);
+            $ins  = is_string($ot->insumos) ? json_decode($ot->insumos, true) : ($ot->insumos ?? []);
+            $terc = is_string($ot->trabajos_tercero) ? json_decode($ot->trabajos_tercero, true) : ($ot->trabajos_tercero ?? []);
+            $todosServicios = array_merge($mano, $reps, $ins, $terc);
+        } else {
+            return; // No hay data origen
+        }
+
+        // 2. Re-agrupar todos los servicios para ambos destinos
+        $n_preventivos = [];
+        $n_correctivos = [];
+        $n_reps_cotiz = [];
+
+        $n_mano_obra = [];
+        $n_repuestos_ot = [];
+        $n_insumos_ot = [];
+        $n_terceros_ot = [];
+
+        $sub_preventivos = 0;
+        $sub_correctivos = 0;
+        $sub_reps_cotiz = 0;
+        $sub_mano_obra = 0;
+        $sub_repuestos_ot = 0;
+        $sub_insumos_ot = 0;
+        $sub_terceros_ot = 0;
+        $total_general = 0;
+
+        foreach ($todosServicios as $srv) {
+            if (!is_array($srv)) continue;
+            $nombre = $srv['nombre'] ?? '';
+            $cat = $mapaCategorias[$nombre] ?? 'OTROS';
+            $costoTotal = floatval($srv['total'] ?? $srv['costo_total'] ?? 0);
+            $total_general += $costoTotal;
+
+            // Para Cotización
+            if ($cat === 'PREVENTIVO') {
+                $n_preventivos[] = $srv;
+                $sub_preventivos += $costoTotal;
+            } elseif ($cat === 'CORRECTIVO') {
+                $n_correctivos[] = $srv;
+                $sub_correctivos += $costoTotal;
+            } else {
+                $n_reps_cotiz[] = $srv;
+                $sub_reps_cotiz += $costoTotal;
+            }
+
+            // Para OT Oficial
+            if (in_array($cat, ['PREVENTIVO', 'CORRECTIVO'])) {
+                $n_mano_obra[] = $srv;
+                $sub_mano_obra += $costoTotal;
+            } elseif ($cat === 'REPUESTOS') {
+                $n_repuestos_ot[] = $srv;
+                $sub_repuestos_ot += $costoTotal;
+            } elseif ($cat === 'SUMINISTRO') {
+                $n_insumos_ot[] = $srv;
+                $sub_insumos_ot += $costoTotal;
+            } else {
+                $n_terceros_ot[] = $srv;
+                $sub_terceros_ot += $costoTotal;
+            }
+        }
+
+        // 3. Actualizar o crear OT (si origen fue Cotizacion)
+        if ($origen === 'COTIZACION' && $cotizacion) {
+            if (!$ot) {
+                $ot = new OrdenTrabajo();
+                $ot->usuario_creador_id = $usuario_id;
+                $ot->orden_recepcion_id = $orden_recepcion_id;
+
+                $year = date('Y');
+                $lastDoc = OrdenTrabajo::where('anio', $year)->orderBy('numero_orden_secuencial', 'desc')->first();
+                $ot->numero_orden_secuencial = $lastDoc ? $lastDoc->numero_orden_secuencial + 1 : 1;
+                $ot->anio = $year;
+                $ot->fecha_emision = date('Y-m-d');
+            } else {
+                $ot->usuario_modificador_id = $usuario_id;
+            }
+
+            $ot->mano_obra = json_encode($n_mano_obra);
+            $ot->repuestos = json_encode($n_repuestos_ot);
+            $ot->insumos = json_encode($n_insumos_ot);
+            $ot->trabajos_tercero = json_encode($n_terceros_ot);
+
+            $ot->subtotal_mano_obra = $sub_mano_obra;
+            $ot->subtotal_repuestos = $sub_repuestos_ot;
+            $ot->subtotal_insumos = $sub_insumos_ot;
+            $ot->subtotal_trabajos_tercero = $sub_terceros_ot;
+            $ot->total_general = $total_general;
+            $ot->save();
+        }
+
+        // 4. Actualizar Cotizacion (si origen fue OT)
+        if ($origen === 'OT' && $ot) {
+            if ($cotizacion) {
+                $cotizacion->usuario_modificador_id = $usuario_id;
+                $cotizacion->preventivos = json_encode($n_preventivos);
+                $cotizacion->correctivos = json_encode($n_correctivos);
+                $cotizacion->repuestos = json_encode($n_reps_cotiz);
+
+                $cotizacion->subtotal_preventivos = $sub_preventivos;
+                $cotizacion->subtotal_correctivos = $sub_correctivos;
+                $cotizacion->subtotal_repuestos = $sub_reps_cotiz;
+                $cotizacion->total_general = $total_general;
+                $cotizacion->save();
+
+                $this->sincronizarCotizacionYOT('COTIZACION', $cotizacion->orden_recepcion_id, $usuario_id);
+            }
+        }
+
+        // 5. Sincronizar actas de repuestos (Formulario 8 y 11)
+        $this->sincronizarActasRepuestos($orden_recepcion_id, $n_repuestos_ot, $usuario_id);
+    }
+
+    private function sincronizarActasRepuestos($orden_recepcion_id, $n_repuestos_ot, $usuario_id)
+    {
+        // Actualizamos RecepcionRepuesto (Formulario 8)
+        $rr = RecepcionRepuesto::where('orden_recepcion_id', $orden_recepcion_id)->first();
+        if ($rr) {
+            $repuestosRR = is_string($rr->repuestos) ? json_decode($rr->repuestos, true) : ($rr->repuestos ?? []);
+            $mapaOcultos = [];
+            foreach ($repuestosRR as $r) {
+                if (isset($r['nombre'])) {
+                    $mapaOcultos[$r['nombre']] = $r['ocultar_reporte'] ?? false;
+                }
+            }
+
+            $nuevosRR = [];
+            foreach ($n_repuestos_ot as $item) {
+                $item['ocultar_reporte'] = $mapaOcultos[$item['nombre'] ?? ''] ?? false;
+                $nuevosRR[] = $item;
+            }
+
+            $rr->repuestos = json_encode($nuevosRR);
+            $rr->usuario_modificador_id = $usuario_id;
+            $rr->save();
+        }
+
+        // Actualizamos ActaDevolucionRepuesto (Formulario 11)
+        $adr = ActaDevolucionRepuesto::where('orden_recepcion_id', $orden_recepcion_id)->first();
+        if ($adr) {
+            $repuestosADR = is_string($adr->repuestos) ? json_decode($adr->repuestos, true) : ($adr->repuestos ?? []);
+            $mapaOcultosADR = [];
+            foreach ($repuestosADR as $r) {
+                if (isset($r['nombre'])) {
+                    $mapaOcultosADR[$r['nombre']] = $r['ocultar_reporte'] ?? false;
+                }
+            }
+
+            $nuevosADR = [];
+            foreach ($n_repuestos_ot as $item) {
+                $item['ocultar_reporte'] = $mapaOcultosADR[$item['nombre'] ?? ''] ?? false;
+                $nuevosADR[] = $item;
+            }
+
+            $adr->repuestos = json_encode($nuevosADR);
+            $adr->usuario_modificador_id = $usuario_id;
+            $adr->save();
+        }
     }
 }

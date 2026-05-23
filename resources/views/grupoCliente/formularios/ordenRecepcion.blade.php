@@ -161,7 +161,7 @@
                 <div class="col-md-5 text-center d-flex align-items-center justify-content-center border">
                     <!-- Image container for Liviano / Pesado -->
                     <div id="imagen_vehiculo_container">
-                        <img id="img_vehiculo" src="{{ asset('assets/images/liviano.png') }}" alt="Vehiculo" class="img-fluid" style="max-height: 400px;">
+                        <img id="img_vehiculo" src="{{ asset('assets/images/liviano.png') }}" alt="Vehiculo" class="img-fluid" style="max-height: 400px;" width="500">
                     </div>
                 </div>
             </div>

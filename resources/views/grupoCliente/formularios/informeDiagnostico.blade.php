@@ -39,7 +39,7 @@
             </div>
             <div class="form-group">
                 <label>Reporte Fotográfico Exterior (Imagen):</label>
-                <input type="file" class="form-control-file" name="inspeccion_exterior_imagen" id="inspeccion_exterior_imagen" accept="image/*">
+                <input type="file" class="form-control-file" name="inspeccion_exterior_imagen" id="inspeccion_exterior_imagen" accept="image/*" capture="environment">
                 <div id="preview_exterior" class="mt-2"></div>
             </div>
 
@@ -51,7 +51,7 @@
             </div>
             <div class="form-group">
                 <label>Reporte Fotográfico Interior (Imagen):</label>
-                <input type="file" class="form-control-file" name="inspeccion_interior_imagen" id="inspeccion_interior_imagen" accept="image/*">
+                <input type="file" class="form-control-file" name="inspeccion_interior_imagen" id="inspeccion_interior_imagen" accept="image/*" capture="environment">
                 <div id="preview_interior" class="mt-2"></div>
             </div>
 
@@ -82,7 +82,7 @@
         <div class="row">
             <div class="col-md-12 mb-2">
                 <label>Imagen del Componente:</label>
-                <input type="file" class="form-control-file diagnostico-imagen-input" name="diagnostico_imagenes[]" accept="image/*">
+                <input type="file" class="form-control-file diagnostico-imagen-input" name="diagnostico_imagenes[]" accept="image/*" capture="environment">
             </div>
             
             <div class="col-md-12 mb-3">

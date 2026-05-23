@@ -180,17 +180,17 @@
                 <div class="row text-center mb-3">
                     <div class="col-md-4">
                         <label class="font-weight-bold">FOTO 1</label>
-                        <input type="file" class="form-control-file" name="filas_archivos[${index}][foto1]" accept="image/*">
+                        <input type="file" class="form-control-file" name="filas_archivos[${index}][foto1]" accept="image/*" capture="environment">
                         ${imgTag1}
                     </div>
                     <div class="col-md-4">
                         <label class="font-weight-bold">FOTO 2</label>
-                        <input type="file" class="form-control-file" name="filas_archivos[${index}][foto2]" accept="image/*">
+                        <input type="file" class="form-control-file" name="filas_archivos[${index}][foto2]" accept="image/*" capture="environment">
                         ${imgTag2}
                     </div>
                     <div class="col-md-4">
                         <label class="font-weight-bold">FOTO 3</label>
-                        <input type="file" class="form-control-file" name="filas_archivos[${index}][foto3]" accept="image/*">
+                        <input type="file" class="form-control-file" name="filas_archivos[${index}][foto3]" accept="image/*" capture="environment">
                         ${imgTag3}
                     </div>
                 </div>
