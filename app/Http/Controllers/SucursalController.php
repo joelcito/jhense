@@ -6,30 +6,34 @@ use App\Models\Sucursal;
 use App\Utils\Respuesta;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 
 class SucursalController extends Controller
 {
 
-    public function listado(){
+    public function listado()
+    {
 
         return view('sucursal.listado');
     }
 
-    public function ajaxListado(Request $request){
-        if($request->ajax()){
+    public function ajaxListado(Request $request)
+    {
+        if ($request->ajax()) {
             $sucursales = Sucursal::all();
             $valores = [
                 'listado' => view('sucursal.ajaxListado')->with(compact('sucursales'))->render()
             ];
             $data = Respuesta::success($valores, "Datos obtenidos correctamente");
-        }else{
+        } else {
             $data = Respuesta::error(null, "Error al obtener los datos");
         }
         return $data;
     }
 
-    public function guardarSucursal(Request $request){
-        if($request->ajax()){
+    public function guardarSucursal(Request $request)
+    {
+        if ($request->ajax()) {
 
             $request->validate([
                 'nombre' => 'required|string',
@@ -44,10 +48,10 @@ class SucursalController extends Controller
                 $sucursal_id     = $request->input('id');
                 $usuario         = Auth::user();
 
-                if($sucursal_id == 0){
+                if ($sucursal_id == 0) {
                     $sucursal                     = new Sucursal();
                     $sucursal->usuario_creador_id = $usuario->id;
-                }else{
+                } else {
                     $sucursal                         = Sucursal::find($sucursal_id);
                     $sucursal->usuario_modificador_id = $usuario->id;
                 }
@@ -55,22 +59,27 @@ class SucursalController extends Controller
                 $sucursal->nombre          = $nombre;
                 $sucursal->codigo_sucursal = $codigo_sucursal;
                 $sucursal->direccion       = $direccion;
+                if ($request->hasFile('logo')) {
+                    $logo = $request->file('logo');
+                    $nombreArchivo = time() . '_' . Str::uuid() . '.' . $logo->getClientOriginalExtension();
+                    $ruta = $logo->storeAs('sucursales', $nombreArchivo, 'public');
+                    $sucursal->logo = $ruta;
+                }
                 $sucursal->save();
 
                 $data = Respuesta::success(null, "Se proceso con exito");
-
             } catch (\Exception $e) {
-                $data = Respuesta::error(null, "Error un error :". $e->getMessage());
+                $data = Respuesta::error(null, "Error un error :" . $e->getMessage());
             }
-
-        }else{
+        } else {
             $data = Respuesta::error(null, "Error al obtener los datos");
         }
         return $data;
     }
 
-    public function eliminarSucursal(Request $request){
-        if($request->ajax()){
+    public function eliminarSucursal(Request $request)
+    {
+        if ($request->ajax()) {
 
             $id = $request->input('id');
             $usuario = Auth::user();
@@ -82,8 +91,7 @@ class SucursalController extends Controller
             Sucursal::destroy($id);
 
             $data = Respuesta::success(null, "Datos obtenidos correctamente");
-
-        }else{
+        } else {
             $data = Respuesta::error(null, "No existe");
         }
         return $data;

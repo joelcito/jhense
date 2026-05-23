@@ -18,19 +18,23 @@ class Sucursal extends Model
         'nombre',
         'direccion',
         'codigo_sucursal',
+        'logo',
         'estado',
         'deleted_at'
     ];
 
-    public function movimientos(){
+    public function movimientos()
+    {
         return $this->hasMany(Movimiento::class);
     }
 
-    public function pagos(){
+    public function pagos()
+    {
         return $this->hasMany(Pago::class, 'sucursal_id')->orderBy('id', 'asc');
     }
 
-    public function clientes(){
+    public function clientes()
+    {
         return $this->hasMany(Cliente::class, 'sucursal_id')->orderBy('id', 'asc');
     }
 }

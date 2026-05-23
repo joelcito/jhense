@@ -56,6 +56,15 @@
                             </div>
                         </div>
                     </div>
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="form-group">
+                                <label class="control-label">Logo</label>
+                                <input name="logo" type="file" id="logo" class="form-control" accept="image/*" required>
+                                <div class="text-danger error-message" id="error-logo"></div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn waves-effect waves-light btn-block btn-success"
@@ -128,17 +137,23 @@
         $('#nombre').val("");
         $('#codigo_sucursal').val("");
         $('#direccion').val("");
+        $('#logo').val("");
         $("#modalSucursal").modal('show');
     }
 
     // // Validacion antes de guardar un perfil nuevo
     function guardar()
     {
-        let datos = $('#formularioSucursal').serializeArray();
+        let formulario = $('#formularioSucursal')[0];
+        let datos = new FormData(formulario);
+
+        //let datos = $('#formularioSucursal').serializeArray();
         $.ajax({
             url: "{{ route('sucursal.guardarSucursal') }}",
             data: datos,
             type: 'POST',
+            processData: false, // Muy importante
+            contentType: false, // Muy importante
             success: function(data) {
                 if(data.estado){
                     $('#modalSucursal').modal('hide')

@@ -3,6 +3,7 @@
         <thead>
             <tr>
                 <th>#</th>
+                <th>Logo</th>
                 <th>Nombre</th>
                 <th>Codigo</th>
                 <th>Direccion</th>
@@ -13,6 +14,13 @@
             @forelse ( $sucursales as $index => $suc)
             <tr>
                 <td>{{ $index + 1 }}</td>
+                <td>
+                    @if($suc->logo != null)
+                        <img src="{{ asset('storage/' . $suc->logo) }}" alt="Logo Sucursal" width="50" height="50">
+                    @else
+                        <span>-</span>
+                    @endif
+                </td>
                 <td>{{ $suc->nombre }}</td>
                 <td>{{ $suc->codigo_sucursal }}</td>
                 <td>{{ $suc->direccion }}</td>

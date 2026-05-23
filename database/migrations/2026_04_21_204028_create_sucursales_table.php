@@ -23,6 +23,7 @@ return new class extends Migration
             $table->string('nombre')->nullable();
             $table->string('direccion')->nullable();
             $table->string('codigo_sucursal')->nullable();
+            $table->string('logo')->nullable();
 
             $table->string('estado')->nullable();
             $table->datetime('deleted_at')->nullable();
