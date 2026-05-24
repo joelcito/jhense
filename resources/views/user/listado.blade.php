@@ -302,6 +302,10 @@
             }
         });
 
+        if(usuario.punto_venta){
+            $("#sucursal_id").val(usuario.punto_venta.sucursal_id);
+        }
+
         $('#modalUsuario').modal('show');
     }
 

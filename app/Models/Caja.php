@@ -16,6 +16,7 @@ class Caja extends Model
         'usuario_modificador_id',
         'usuario_eliminador_id',
         'usuario_id',
+        'punto_venta_id',
         'fecha_apertura',
         'fecha_cierre',
         'monto_apertura',
@@ -36,6 +37,11 @@ class Caja extends Model
     public function usuario()
     {
         return $this->belongsTo('App\Models\User', 'usuario_id');
+    }
+
+    public function puntoVenta()
+    {
+        return $this->belongsTo('App\Models\PuntoVenta', 'punto_venta_id');
     }
 
     public function pagos()

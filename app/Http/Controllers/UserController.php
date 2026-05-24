@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\PuntoVenta;
 use App\Models\Rol;
 use App\Models\Sucursal;
 use App\Models\User;
@@ -13,29 +14,32 @@ use Illuminate\Support\Facades\Hash;
 class UserController extends Controller
 {
     /* NUEVAS FUNCIONALIDADES */
-    public function listado(){
+    public function listado()
+    {
         $roles = Rol::all();
         $sucursales =  Sucursal::all();
         return view('user.listado')->with(compact(['roles', 'sucursales']));
     }
 
-    public function ajaxListado(Request $request){
-        if($request->ajax()){
+    public function ajaxListado(Request $request)
+    {
+        if ($request->ajax()) {
 
-            $usuarios = User::all();
+            $usuarios = User::with('puntoVenta', 'rol')->get();
             $valores = [
                 'listado' => view('user.ajaxListado')->with(compact('usuarios'))->render()
             ];
             $data = Respuesta::success($valores, "Datos obtenidos correctamente");
-        }else{
+        } else {
             $data = Respuesta::error(null, "Error al obtener los datos");
         }
         return $data;
     }
 
-    public function guardarUsuario(Request $request){
+    public function guardarUsuario(Request $request)
+    {
         //TODO: adicionar localidad_id del usuario
-        if($request->ajax()){
+        if ($request->ajax()) {
 
             $request->validate([
                 'nombres'        => 'required',
@@ -61,15 +65,15 @@ class UserController extends Controller
             $sucursal_id    = $request->input('sucursal_id');
             $usuarioLoguado = Auth::user();
 
-            if( $id == 0 ){
+            if ($id == 0) {
                 $request->validate([
                     'cedula' => 'unique:users,cedula'
                 ]);
                 $usuario                     = new User();
                 $usuario->usuario_creador_id = $usuarioLoguado->id;
                 $usuario->password           = Hash::make($cedula);
-            }else{
-                if( $existe = User::where('cedula', $cedula)->where('id', '!=', $id)->first() ){
+            } else {
+                if ($existe = User::where('cedula', $cedula)->where('id', '!=', $id)->first()) {
                     $request->validate([
                         'cedula' => 'unique:users,cedula'
                     ]);
@@ -86,20 +90,23 @@ class UserController extends Controller
             $usuario->email          = $email;
             $usuario->celular        = $celular;
             $usuario->rol_id         = $rol_id;
-            $usuario->sucursal_id    = $sucursal_id;
-            $usuario->name           = $nombres." ".$ap_paterno." ".$ap_materno;
-            $usuario->save();
-
-            $data = Respuesta::success(null, "Datos obtenidos correctamente");
-
-        }else{
+            $usuario->name           = $nombres . " " . $ap_paterno . " " . $ap_materno;
+            if ($punto = PuntoVenta::where('sucursal_id', $sucursal_id)->first()) {
+                $usuario->punto_venta_id = $punto->id;
+                $usuario->save();
+                $data = Respuesta::success(null, "Datos obtenidos correctamente");
+            } else {
+                $data = Respuesta::error(null, "No existe la sucursal del usauario, revisar.");
+            }
+        } else {
             $data = Respuesta::error(null, "No existe");
         }
         return $data;
     }
 
-    public function eliminarUsuario(Request $request){
-        if($request->ajax()){
+    public function eliminarUsuario(Request $request)
+    {
+        if ($request->ajax()) {
 
             $id = $request->input('id');
             $usuarioLogueado = Auth::user();
@@ -111,15 +118,15 @@ class UserController extends Controller
             User::destroy($id);
 
             $data = Respuesta::success(null, "Datos obtenidos correctamente");
-
-        }else{
+        } else {
             $data = Respuesta::error(null, "No existe");
         }
         return $data;
     }
 
-    public function resetPassword(Request $request){
-        if($request->ajax()){
+    public function resetPassword(Request $request)
+    {
+        if ($request->ajax()) {
             $request->validate([
                 'usuario_id' => 'required|exists:users,id',
                 'password' => 'required|min:6|confirmed',
@@ -133,15 +140,15 @@ class UserController extends Controller
             $usuario->save();
 
             $data = Respuesta::success(null, "Datos obtenidos correctamente");
-
-        }else{
+        } else {
             $data = Respuesta::error(null, "No existe");
         }
         return $data;
     }
-    
-    public function cambiaSucursal(Request $request){
-        if($request->ajax()){
+
+    public function cambiaSucursal(Request $request)
+    {
+        if ($request->ajax()) {
             $request->validate([
                 'sucursal_id' => 'required',
             ]);
@@ -155,11 +162,9 @@ class UserController extends Controller
             $usuario->save();
 
             $data = Respuesta::success(null, "Datos obtenidos correctamente");
-
-        }else{
+        } else {
             $data = Respuesta::error(null, "No existe");
         }
         return $data;
     }
-
 }

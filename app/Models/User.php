@@ -24,7 +24,7 @@ class User extends Authenticatable
         'usuario_modificador_id',
         'usuario_eliminador_id',
         'rol_id',
-        'sucursal_id',
+        'punto_venta_id',
         'nombres',
         'ap_paterno',
         'ap_materno',
@@ -48,7 +48,13 @@ class User extends Authenticatable
         ];
     }
 
-    public function sucursal(){
-        return $this->belongsTo(Sucursal::class, 'sucursal_id');
+    public function puntoVenta()
+    {
+        return $this->belongsTo(PuntoVenta::class, 'punto_venta_id');
+    }
+
+    public function rol()
+    {
+        return $this->belongsTo(Rol::class, 'rol_id');
     }
 }

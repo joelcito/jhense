@@ -9,7 +9,7 @@
                 if($user->rol_id == 1){
                     $misSucursales = \App\Models\Sucursal::all();
                 }else{
-                    $misSucursales = \App\Models\Sucursal::where('id', $user->sucursal_id)->limit(1)->get();
+                    $misSucursales = \App\Models\Sucursal::where('id', $user->puntoVenta->sucursal_id)->limit(1)->get();
                 }
             @endphp
             <ul id="sidebarnav">

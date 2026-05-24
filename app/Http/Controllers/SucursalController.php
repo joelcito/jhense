@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\PuntoVenta;
 use App\Models\Sucursal;
 use App\Utils\Respuesta;
 use Illuminate\Http\Request;
@@ -66,6 +67,18 @@ class SucursalController extends Controller
                     $sucursal->logo = $ruta;
                 }
                 $sucursal->save();
+
+                $punto = PuntoVenta::where('sucursal_id', $sucursal->id)->first();
+                if (!$punto) {
+                    $nuevo = new PuntoVenta();
+                    $nuevo->usuario_creador_id = $usuario->id;
+                    $nuevo->sucursal_id = $sucursal->id;
+                    $nuevo->codigo = '123';
+                    $nuevo->nombre = "Primer punto de venta";
+                    $nuevo->tipo = "Primero";
+                    $nuevo->codigo_ambiente = "Ambiente";
+                    $nuevo->save();
+                }
 
                 $data = Respuesta::success(null, "Se proceso con exito");
             } catch (\Exception $e) {

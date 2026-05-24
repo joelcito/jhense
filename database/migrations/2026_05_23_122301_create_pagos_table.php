@@ -22,8 +22,8 @@ return new class extends Migration
 
             $table->foreign('factura_id')->references('id')->on('facturas');
             $table->unsignedBigInteger('factura_id')->nullable();
-            $table->foreign('sucursal_id')->references('id')->on('sucursales');
-            $table->unsignedBigInteger('sucursal_id')->nullable();
+            $table->foreign('punto_venta_id')->references('id')->on('punto_ventas');
+            $table->unsignedBigInteger('punto_venta_id')->nullable();
             $table->foreign('caja_id')->references('id')->on('cajas');
             $table->unsignedBigInteger('caja_id')->nullable();
 

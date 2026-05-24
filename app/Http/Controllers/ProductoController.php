@@ -25,7 +25,7 @@ class ProductoController extends Controller
     {
         if ($request->ajax()) {
 
-            $sucursal_id = Auth::user()->sucursal_id; //nuevo
+            $sucursal_id = Auth::user()->puntoVenta->sucursal_id; //nuevo
             $sucursal = Sucursal::find($sucursal_id); //nuevo
             $productos = Producto::all();
             $valores = [

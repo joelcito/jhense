@@ -16,7 +16,7 @@ class Pago extends Model
         'usuario_modificador_id',
         'usuario_eliminador_id',
         'factura_id',
-        'sucursal_id',
+        'punto_venta_id',
         'caja_id',
         'sub_categoria_id',
         'tipo_pago',
@@ -34,9 +34,9 @@ class Pago extends Model
         return $this->belongsTo('App\Models\Factura', 'factura_id');
     }
 
-    public function sucursal()
+    public function puntoVenta()
     {
-        return $this->belongsTo(Sucursal::class, 'sucursal_id');
+        return $this->belongsTo(PuntoVenta::class, 'punto_venta_id');
     }
 
     public function usuario()
@@ -47,7 +47,8 @@ class Pago extends Model
     public static function pagosEfectuados($sucursal_id, $fechaIni, $fechaFin)
     {
         return static::select('pagos.*')
-            ->join('sucursales', 'sucursales.id', '=', 'pagos.sucursal_id')
+            ->join('punto_ventas', 'punto_ventas.id', '=', 'pagos.punto_venta_id')
+            ->join('sucursales', 'sucursales.id', '=', 'punto_ventas.sucursal_id')
             ->where('sucursales.id', $sucursal_id)
             ->whereBetween('pagos.fecha', [$fechaIni, $fechaFin])
             ->get()

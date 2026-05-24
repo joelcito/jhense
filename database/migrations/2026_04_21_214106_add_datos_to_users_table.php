@@ -21,8 +21,8 @@ return new class extends Migration
 
             $table->unsignedBigInteger('rol_id')->nullable()->after('usuario_eliminador_id');
             $table->foreign('rol_id')->references('id')->on('roles');
-            $table->unsignedBigInteger('sucursal_id')->nullable()->after('rol_id');
-            $table->foreign('sucursal_id')->references('id')->on('sucursales');
+            $table->unsignedBigInteger('punto_venta_id')->nullable()->after('rol_id');
+            $table->foreign('punto_venta_id')->references('id')->on('punto_ventas');
 
             $table->string('nombres')->nullable()->after('password');
             $table->string('ap_paterno')->nullable()->after('nombres');
