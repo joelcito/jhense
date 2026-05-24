@@ -2,12 +2,14 @@
 
 use App\Http\Controllers\AutoController;
 use App\Http\Controllers\AutoSucursalController;
+use App\Http\Controllers\CajaController;
 use App\Http\Controllers\ClienteController;
 use App\Http\Controllers\ClienteSucursalController;
 use App\Http\Controllers\ConsultaController;
 use App\Http\Controllers\GrupoClienteController;
 use App\Http\Controllers\GrupoController;
 use App\Http\Controllers\MarcaController;
+use App\Http\Controllers\PagoController;
 use App\Http\Controllers\ProductoController;
 use App\Http\Controllers\RolController;
 use App\Http\Controllers\SucursalController;
@@ -25,6 +27,9 @@ Route::get('/dashboard', function () {
 Route::middleware('auth')->group(function () {
 
     //1: Admin | 2: Supervisor | 3: Jefe Mecanico | 4: Mecanico | 5: Secretaria
+    Route::middleware(['rol:1'])->group(function () { //ADMIN
+
+    });
 
     // ROL
     Route::prefix('/rol')->group(function () {
@@ -103,6 +108,25 @@ Route::middleware('auth')->group(function () {
         Route::post('/generarReporteSalida', [ProductoController::class, 'generarReporteSalida'])->name('producto.generarReporteSalida');
 
         Route::post('/importarServiciosProductosExcel', [ProductoController::class, 'importarServiciosProductosExcel'])->name('producto.importarServiciosProductosExcel');
+    });
+
+    //PAGO
+    Route::prefix('/pago')->group(function () {
+        Route::post('/guardarTipoIngresoSalida', [PagoController::class, 'guardarTipoIngresoSalida']);
+        Route::get('/listado', [PagoController::class, 'listado'])->name('pago.listado');
+        Route::post('/ajaxListado', [PagoController::class, 'ajaxListado'])->name('pago.ajaxListado');
+        Route::get('/listadoDeuda', [PagoController::class, 'listadoDeuda'])->name('pago.listadoDeuda');
+        Route::post('/ajaxListadoDeuda', [PagoController::class, 'ajaxListadoDeuda'])->name('pago.ajaxListadoDeuda');
+        Route::post('/ajaxFormPagoDeuda', [PagoController::class, 'ajaxFormPagoDeuda'])->name('pago.ajaxFormPagoDeuda');
+        Route::post('/guardarPagoDeuda', [PagoController::class, 'guardarPagoDeuda'])->name('pago.guardarPagoDeuda');
+    });
+
+    // CAJA
+    Route::prefix('/caja')->group(function () {
+        Route::get('/listado', [CajaController::class, 'listado'])->name('caja.listado');
+        Route::post('/ajaxListado', [CajaController::class, 'ajaxListado']);
+        Route::post('/guardarAperturaCaja', [CajaController::class, 'guardarAperturaCaja']);
+        Route::post('/guardarCerrarCaja', [CajaController::class, 'guardarCerrarCaja']);
     });
 
     //ADICICONES POR SUCURSAL

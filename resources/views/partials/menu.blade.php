@@ -86,6 +86,25 @@
                         </li>
                     </ul>
                 </li>
+                <!-- Pagos-->
+                <li class="nav-small-cap"><i class="mdi mdi-dots-horizontal"></i> <span class="hide-menu">PAGOS</span></li>
+                <li class="sidebar-item">
+                    <a class="sidebar-link has-arrow waves-effect waves-dark" aria-expanded="false">
+                        <i data-feather="home" class="feather-icon"></i><span class="hide-menu"> Pagos</span>
+                    </a>
+                    <ul aria-expanded="false" class="collapse  first-level">
+                        <li class="sidebar-item">
+                            <a href='{{ route('caja.listado') }}' class="sidebar-link">
+                                <i data-feather="home" class="feather-icon"></i><span class="hide-menu"> Cajas </span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item">
+                            <a href='{{ route('pago.listado') }}' class="sidebar-link">
+                                <i data-feather="home" class="feather-icon"></i><span class="hide-menu"> Listado Pagos </span>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
 
                 {{-- TALLERES --}}
                 <li class="nav-small-cap"><i class="mdi mdi-dots-horizontal"></i> <span class="hide-menu">TALLERES</span></li>
