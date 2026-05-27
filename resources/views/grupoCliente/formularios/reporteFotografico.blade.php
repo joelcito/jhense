@@ -164,7 +164,6 @@
 
         let imgTag1 = val1 ? `<img src="${val1}" class="img-thumbnail mt-2" style="max-height: 150px;">` : '';
         let imgTag2 = val2 ? `<img src="${val2}" class="img-thumbnail mt-2" style="max-height: 150px;">` : '';
-        let imgTag3 = val3 ? `<img src="${val3}" class="img-thumbnail mt-2" style="max-height: 150px;">` : '';
 
         let html = `
         <div class="card mb-3 fila-foto" id="fila_foto_${index}">
@@ -178,26 +177,19 @@
                 <input type="hidden" name="filas[${index}][path_foto3]" value="${path3}">
                 
                 <div class="row text-center mb-3">
+                    <div class="col-md-4 text-left">
+                        <label class="font-weight-bold">DETALLE DEL SERVICIO / DESCRIPCIÓN</label>
+                        <textarea class="form-control" name="filas[${index}][descripcion]" rows="6">${desc}</textarea>
+                    </div>
                     <div class="col-md-4">
-                        <label class="font-weight-bold">FOTO 1</label>
-                        <input type="file" class="form-control-file" name="filas_archivos[${index}][foto1]" accept="image/*" capture="environment">
+                        <label class="font-weight-bold">RESPALDO DE SERVICIO o REPUESTO INICIAL</label>
+                        <input type="file" class="form-control-file text-center mx-auto" name="filas_archivos[${index}][foto1]" accept="image/*" capture="environment">
                         ${imgTag1}
                     </div>
                     <div class="col-md-4">
-                        <label class="font-weight-bold">FOTO 2</label>
-                        <input type="file" class="form-control-file" name="filas_archivos[${index}][foto2]" accept="image/*" capture="environment">
+                        <label class="font-weight-bold">RESPALDO DE SERVICIO o REPUESTO ACTUAL</label>
+                        <input type="file" class="form-control-file text-center mx-auto" name="filas_archivos[${index}][foto2]" accept="image/*" capture="environment">
                         ${imgTag2}
-                    </div>
-                    <div class="col-md-4">
-                        <label class="font-weight-bold">FOTO 3</label>
-                        <input type="file" class="form-control-file" name="filas_archivos[${index}][foto3]" accept="image/*" capture="environment">
-                        ${imgTag3}
-                    </div>
-                </div>
-                <div class="row">
-                    <div class="col-md-12">
-                        <label class="font-weight-bold">DETALLE DEL SERVICIO / DESCRIPCIÓN</label>
-                        <textarea class="form-control" name="filas[${index}][descripcion]" rows="3">${desc}</textarea>
                     </div>
                 </div>
             </div>

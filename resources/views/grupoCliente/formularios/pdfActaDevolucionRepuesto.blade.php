@@ -25,7 +25,7 @@
 </head>
 <body>
 
-    @include('grupoCliente.formularios.pdfHeader', ['titulo' => 'ACTA DE DEVOLUCION DE<br>REPUESTOS'])
+    @include('grupoCliente.formularios.pdfHeader', ['titulo' => 'ACTA DE DEVOLUCION DE REPUESTOS'])
 
     <table class="no-border-table" style="width: 100%; margin-bottom: 15px;">
         <tr>

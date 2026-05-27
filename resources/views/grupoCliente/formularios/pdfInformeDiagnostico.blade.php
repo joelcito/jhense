@@ -27,8 +27,7 @@
 <body>
 
     @include('grupoCliente.formularios.pdfHeader', [
-        'titulo' => 'INFORME TÉCNICO DE DIAGNOSTICO',
-        'rightCode' => 'N°: ' . $informe->id
+        'titulo' => 'INFORME TÉCNICO DE DIAGNOSTICO'
     ])
 
     <p><i>Ref.: Informe de Inspección y Evaluación Técnica</i></p>

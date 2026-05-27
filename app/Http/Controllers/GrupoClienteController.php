@@ -2675,13 +2675,39 @@ class GrupoClienteController extends Controller {
         $row += 2;
 
         if ($filas && count($filas) > 0) {
-            foreach ($filas as $f) {
-                $hoja->setCellValue('A' . $row, 'DETALLE: ' . ($f['descripcion'] ?? ''));
-                $hoja->mergeCells('A' . $row . ':F' . $row);
-                $hoja->getStyle('A' . $row)->getFont()->setBold(true);
-                $row++;
+            $hoja->setCellValue('A' . $row, 'Reporte fotográfico');
+            $hoja->mergeCells('A' . $row . ':F' . $row);
+            $hoja->getStyle('A' . $row)->getFont()->setBold(true);
+            $hoja->getStyle('A' . $row)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+            $hoja->getStyle('A' . $row)->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setARGB('FFFFE699');
+            $hoja->getStyle('A' . $row . ':F' . $row)->applyFromArray($borderThin);
+            $row++;
+            
+            $hoja->setCellValue('A' . $row, 'DESCRIPCION');
+            $hoja->mergeCells('A' . $row . ':B' . $row);
+            $hoja->setCellValue('C' . $row, 'RESPALDO DE SERVICIO o REPUESTO INICIAL');
+            $hoja->mergeCells('C' . $row . ':D' . $row);
+            $hoja->setCellValue('E' . $row, 'RESPALDO DE SERVICIO o REPUESTO ACTUAL');
+            $hoja->mergeCells('E' . $row . ':F' . $row);
+            $hoja->getStyle('A' . $row . ':F' . $row)->getFont()->setBold(true);
+            $hoja->getStyle('A' . $row . ':F' . $row)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+            $hoja->getStyle('A' . $row . ':F' . $row)->getAlignment()->setWrapText(true);
+            $hoja->getStyle('A' . $row . ':F' . $row)->applyFromArray($borderThin);
+            $row++;
 
-                $rowHeights = 100;
+            foreach ($filas as $f) {
+                $hoja->setCellValue('A' . $row, $f['descripcion'] ?? '');
+                $hoja->mergeCells('A' . $row . ':B' . $row);
+                $hoja->getStyle('A' . $row)->getAlignment()->setVertical(\PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER);
+                $hoja->getStyle('A' . $row)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
+                $hoja->getStyle('A' . $row)->getAlignment()->setWrapText(true);
+                $hoja->getStyle('A' . $row)->getFont()->setBold(true);
+                
+                $hoja->mergeCells('C' . $row . ':D' . $row);
+                $hoja->mergeCells('E' . $row . ':F' . $row);
+                $hoja->getStyle('A' . $row . ':F' . $row)->applyFromArray($borderThin);
+
+                $rowHeights = 110;
                 $hoja->getRowDimension($row)->setRowHeight($rowHeights);
 
                 if (!empty($f['foto1']) && file_exists(storage_path('app/public/' . $f['foto1']))) {
@@ -2689,8 +2715,10 @@ class GrupoClienteController extends Controller {
                     $drawing->setName('Foto1');
                     $drawing->setDescription('Foto 1');
                     $drawing->setPath(storage_path('app/public/' . $f['foto1']));
-                    $drawing->setHeight(120);
-                    $drawing->setCoordinates('B' . $row);
+                    $drawing->setHeight(130);
+                    $drawing->setCoordinates('C' . $row);
+                    $drawing->setOffsetX(10);
+                    $drawing->setOffsetY(5);
                     $drawing->setWorksheet($hoja);
                 }
 
@@ -2699,22 +2727,14 @@ class GrupoClienteController extends Controller {
                     $drawing->setName('Foto2');
                     $drawing->setDescription('Foto 2');
                     $drawing->setPath(storage_path('app/public/' . $f['foto2']));
-                    $drawing->setHeight(120);
-                    $drawing->setCoordinates('D' . $row);
+                    $drawing->setHeight(130);
+                    $drawing->setCoordinates('E' . $row);
+                    $drawing->setOffsetX(10);
+                    $drawing->setOffsetY(5);
                     $drawing->setWorksheet($hoja);
                 }
 
-                if (!empty($f['foto3']) && file_exists(storage_path('app/public/' . $f['foto3']))) {
-                    $drawing = new \PhpOffice\PhpSpreadsheet\Worksheet\Drawing();
-                    $drawing->setName('Foto3');
-                    $drawing->setDescription('Foto 3');
-                    $drawing->setPath(storage_path('app/public/' . $f['foto3']));
-                    $drawing->setHeight(120);
-                    $drawing->setCoordinates('F' . $row);
-                    $drawing->setWorksheet($hoja);
-                }
-
-                $row += 2;
+                $row++;
             }
         }
 

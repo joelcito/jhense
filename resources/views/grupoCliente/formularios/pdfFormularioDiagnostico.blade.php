@@ -30,8 +30,8 @@
 <body>
 
     @include('grupoCliente.formularios.pdfHeader', [
-        'titulo' => 'FORMULARIO PARA DIAGNOSTICO DE<br>MANTENIMIENTO DE VEHICULOS',
-        'rightCode' => 'RG-01-B-PP-1-DAC/UTR-2<br>CITE: 001<br>SCZ, ' . \Carbon\Carbon::parse($form->created_at ?? now())->format('d de F de Y')
+        'titulo' => 'FORMULARIO PARA DIAGNOSTICO DE MANTENIMIENTO DE VEHICULOS',
+        'rightCode' => 'RG-01-B-PP-1-DAC/UTR-2, ' . \Carbon\Carbon::parse($form->created_at ?? now())->format('d de F de Y')
     ])
 
     <table>

@@ -25,7 +25,7 @@
 </head>
 <body>
 
-    @include('grupoCliente.formularios.pdfHeader', ['titulo' => 'REPORTE<br>FOTOGRÁFICO'])
+    @include('grupoCliente.formularios.pdfHeader', ['titulo' => 'REPORTE FOTOGRÁFICO'])
 
     <table class="no-border-table" style="width: 100%; margin-bottom: 15px;">
         <tr>
@@ -89,17 +89,20 @@
                     </td>
                 </tr>
                 <tr>
-                    <td style="width: 33.33%; text-align: center; vertical-align: middle;">
-                        
+                    <td class="text-center font-weight-bold" style="width: 33.33%;">
+                        DESCRIPCION
                     </td>
-                    <td style="width: 33.33%; text-align: center; vertical-align: middle;">
-                        REPUESTOS CAMBIADOS
+                    <td class="text-center font-weight-bold" style="width: 33.33%;">
+                        RESPALDO DE SERVICIO o REPUESTO INICIAL
                     </td>
-                    <td style="width: 33.33%; text-align: center; vertical-align: middle;">
-                        REPUESTOS NUEVOS
+                    <td class="text-center font-weight-bold" style="width: 33.33%;">
+                        RESPALDO DE SERVICIO o REPUESTO ACTUAL
                     </td>
                 </tr>
                 <tr>
+                    <td style="width: 33.33%; padding: 10px; font-weight: bold; vertical-align: middle; text-align: center;">
+                        {{ $f['descripcion'] ?? 'Sin descripción' }}
+                    </td>
                     <td style="width: 33.33%; text-align: center; height: 150px; vertical-align: middle;">
                         @if(!empty($f['foto1']) && file_exists(storage_path('app/public/' . $f['foto1'])))
                             <img src="{{ storage_path('app/public/' . $f['foto1']) }}" style="max-height: 140px; max-width: 100%;">
@@ -113,23 +116,6 @@
                         @else
                             <span style="color: #ccc;">[SIN FOTO]</span>
                         @endif
-                    </td>
-                    <td style="width: 33.33%; text-align: center; height: 150px; vertical-align: middle;">
-                        @if(!empty($f['foto3']) && file_exists(storage_path('app/public/' . $f['foto3'])))
-                            <img src="{{ storage_path('app/public/' . $f['foto3']) }}" style="max-height: 140px; max-width: 100%;">
-                        @else
-                            <span style="color: #ccc;">[SIN FOTO]</span>
-                        @endif
-                    </td>
-                </tr>
-                <tr>
-                    <td class="bg-yellow text-center font-weight-bold" colspan="3" style="font-size: 12px;">
-                        DETALLE DEL SERVICIO
-                    </td>
-                </tr>
-                <tr>
-                    <td colspan="3" style="padding: 10px; font-style: italic;">
-                        {{ $f['descripcion'] ?? 'Sin descripción' }}
                     </td>
                 </tr>
             </table>

@@ -28,8 +28,7 @@
 <body>
 
     @include('grupoCliente.formularios.pdfHeader', [
-        'titulo' => 'ORDEN DE RECEPCIÓN DE VEHÍCULOS',
-        'rightCode' => 'N° de Orden: ' . $orden->id
+        'titulo' => 'ORDEN DE RECEPCIÓN DE VEHÍCULOS'
     ])
 
     <table class="info-table">
