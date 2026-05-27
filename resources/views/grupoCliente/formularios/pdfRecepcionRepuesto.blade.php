@@ -20,18 +20,7 @@
 </head>
 <body>
 
-    <table>
-        <tr>
-            <td rowspan="2" style="width: 20%; border-right: none;"></td>
-            <td rowspan="2" style="width: 60%; border-left: none; border-right: none;" class="header-title">
-                FORMULARIO DE RECEPCIÓN DE REPUESTOS Y ACCESORIOS USADOS
-            </td>
-            <td style="width: 20%; text-align: center; font-weight: bold;">RG-03-B-PP-1-DAC/UTR-2</td>
-        </tr>
-        <tr>
-            <td style="text-align: center; padding: 10px;"></td>
-        </tr>
-    </table>
+    @include('grupoCliente.formularios.pdfHeader', ['titulo' => 'FORMULARIO DE RECEPCIÓN DE REPUESTOS Y ACCESORIOS USADOS', 'rightCode' => 'RG-03-B-PP-1-DAC/UTR-2'])
 
     <table>
         <tr>

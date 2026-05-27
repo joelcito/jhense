@@ -29,8 +29,49 @@ use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
-class GrupoClienteController extends Controller
-{
+class GrupoClienteController extends Controller {
+
+    
+    
+    private function _agregarLogosExcel($hoja, $orden, $lastCol, $titleRow = 1)
+    {
+        // Adjust the row height where the title is located
+        $hoja->getRowDimension($titleRow)->setRowHeight(65);
+        $hoja->getStyle("A" . $titleRow)->getAlignment()->setVertical(\PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_BOTTOM);
+
+        $sucursalLogo = null;
+        if(isset($orden) && isset($orden->grupoCliente->cliente->sucursal->logo)){
+            $sucursalLogo = $orden->grupoCliente->cliente->sucursal->logo;
+        }
+
+        // The left logo usually goes in column A
+        if ($sucursalLogo && file_exists(storage_path("app/public/" . $sucursalLogo))) {
+            $drawing = new \PhpOffice\PhpSpreadsheet\Worksheet\Drawing();
+            $drawing->setName("Logo Sucursal");
+            $drawing->setPath(storage_path("app/public/" . $sucursalLogo));
+            $drawing->setHeight(55);
+            $drawing->setCoordinates("A" . $titleRow);
+            $drawing->setOffsetX(5);
+            $drawing->setOffsetY(5);
+            $drawing->setWorksheet($hoja);
+        }
+
+        // The right logo goes in $lastCol
+        $logoJhensePath = public_path("assets/imagenes/logo_jhense.png");
+        if(file_exists($logoJhensePath)){
+            $drawing2 = new \PhpOffice\PhpSpreadsheet\Worksheet\Drawing();
+            $drawing2->setName("Logo General");
+            $drawing2->setPath($logoJhensePath);
+            $drawing2->setHeight(55);
+            $drawing2->setCoordinates($lastCol . $titleRow);
+            $drawing2->setOffsetX(5);
+            $drawing2->setOffsetY(5);
+            $drawing2->setWorksheet($hoja);
+        }
+    }
+
+
+
     public function listado($sucursal_id, $grupo_id)
     {
         $sucursal = Sucursal::find($sucursal_id);
@@ -654,6 +695,7 @@ class GrupoClienteController extends Controller
         header('Content-Disposition: attachment;filename="' . $fileName . '"');
         header('Cache-Control: max-age=0');
 
+        $this->_agregarLogosExcel($hoja, $orden, 'D');
         $writer = new Xlsx($libro);
         $writer->save('php://output');
         exit;
@@ -879,6 +921,7 @@ class GrupoClienteController extends Controller
         header('Content-Disposition: attachment;filename="' . $fileName . '"');
         header('Cache-Control: max-age=0');
 
+        $this->_agregarLogosExcel($hoja, ($informe->ordenRecepcion ?? null), 'H');
         $writer = new Xlsx($libro);
         $writer->save('php://output');
         exit;
@@ -1158,6 +1201,7 @@ class GrupoClienteController extends Controller
         header('Content-Disposition: attachment;filename="' . $fileName . '"');
         header('Cache-Control: max-age=0');
 
+        $this->_agregarLogosExcel($hoja, $orden, 'D');
         $writer = new Xlsx($libro);
         $writer->save('php://output');
         exit;
@@ -1368,6 +1412,7 @@ class GrupoClienteController extends Controller
         header('Content-Disposition: attachment;filename="' . $fileName . '"');
         header('Cache-Control: max-age=0');
 
+        $this->_agregarLogosExcel($hoja, $orden, 'F');
         $writer = new Xlsx($libro);
         $writer->save('php://output');
         exit;
@@ -1573,6 +1618,7 @@ class GrupoClienteController extends Controller
         header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         header('Content-Disposition: attachment;filename="' . $fileName . '"');
         header('Cache-Control: max-age=0');
+        $this->_agregarLogosExcel($hoja, $orden, 'F');
         $writer = new Xlsx($libro);
         $writer->save('php://output');
         exit;
@@ -1850,6 +1896,7 @@ class GrupoClienteController extends Controller
         header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         header('Content-Disposition: attachment;filename="' . $fileName . '"');
         header('Cache-Control: max-age=0');
+        $this->_agregarLogosExcel($hoja, $orden, 'F');
         $writer = new Xlsx($libro);
         $writer->save('php://output');
         exit;
@@ -2175,6 +2222,8 @@ class GrupoClienteController extends Controller
         header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         header('Content-Disposition: attachment;filename="' . $fileName . '"');
         header('Cache-Control: max-age=0');
+        $hoja->removeRow(1, 1);
+        $this->_agregarLogosExcel($hoja, $orden, 'F', 1);
         $writer = new Xlsx($libro);
         $writer->save('php://output');
         exit;
@@ -2424,6 +2473,8 @@ class GrupoClienteController extends Controller
         header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         header('Content-Disposition: attachment;filename="' . $fileName . '"');
         header('Cache-Control: max-age=0');
+        $hoja->removeRow(1, 1);
+        $this->_agregarLogosExcel($hoja, $orden, 'E', 1);
         $writer = new Xlsx($libro);
         $writer->save('php://output');
         exit;
@@ -2561,7 +2612,7 @@ class GrupoClienteController extends Controller
             $numOt = $ot->numero_orden_secuencial . '/' . $ot->anio;
         }
 
-        $libro = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $libro = new Spreadsheet();
         $hoja  = $libro->getActiveSheet();
         $hoja->setTitle('Reporte Fotográfico');
 
@@ -2671,6 +2722,8 @@ class GrupoClienteController extends Controller
         header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         header('Content-Disposition: attachment;filename="' . $fileName . '"');
         header('Cache-Control: max-age=0');
+        $hoja->removeRow(1, 1);
+        $this->_agregarLogosExcel($hoja, $orden, 'F', 1);
         $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($libro);
         $writer->save('php://output');
         exit;
@@ -2910,6 +2963,8 @@ class GrupoClienteController extends Controller
         header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         header('Content-Disposition: attachment;filename="' . $fileName . '"');
         header('Cache-Control: max-age=0');
+        $hoja->removeRow(1, 1);
+        $this->_agregarLogosExcel($hoja, $orden, 'D', 1);
         $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($libro);
         $writer->save('php://output');
         exit;
@@ -3148,6 +3203,8 @@ class GrupoClienteController extends Controller
         header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         header('Content-Disposition: attachment;filename="' . $fileName . '"');
         header('Cache-Control: max-age=0');
+        $hoja->removeRow(1, 1);
+        $this->_agregarLogosExcel($hoja, $orden, 'E', 1);
         $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($libro);
         $writer->save('php://output');
         exit;

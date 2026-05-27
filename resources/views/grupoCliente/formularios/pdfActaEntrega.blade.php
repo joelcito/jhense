@@ -25,19 +25,7 @@
 </head>
 <body>
 
-    <table style="margin-bottom: 15px; width: 100%;" class="no-border-table">
-        <tr>
-            <td style="width: 25%; text-align: center; border: 1px solid #000 !important;">
-                <!-- Espacio logo -->
-            </td>
-            <td style="width: 50%; border: 1px solid #000 !important;" class="header-title">
-                ACTA DE ENTREGA
-            </td>
-            <td style="width: 25%; text-align: center; border: 1px solid #000 !important;">
-                <!-- Espacio -->
-            </td>
-        </tr>
-    </table>
+    @include('grupoCliente.formularios.pdfHeader', ['titulo' => 'ACTA DE ENTREGA'])
     
     <div class="text-center font-weight-bold" style="text-decoration: underline; margin-bottom: 10px; font-style: italic;">
         {{ $numOt }}

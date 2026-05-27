@@ -23,18 +23,7 @@
 </head>
 <body>
 
-    <table>
-        <tr>
-            <td rowspan="2" style="width: 20%; border-right: none;"></td>
-            <td rowspan="2" style="width: 55%; border-left: none; border-right: none;" class="header-title">
-                FORMULARIO DE AUTORIZACION DE CAMBIO DE REPUESTOS, PARTES, ACCESORIOS, SERVICIOS Y SUMINISTROS PARA VEHÍCULOS
-            </td>
-            <td style="width: 25%; text-align: center; font-weight: bold;">RG-02-B-PP-1-DAC/UTR-2</td>
-        </tr>
-        <tr>
-            <td style="text-align: center; padding: 10px;"></td>
-        </tr>
-    </table>
+    @include('grupoCliente.formularios.pdfHeader', ['titulo' => 'FORMULARIO DE AUTORIZACION DE CAMBIO DE REPUESTOS, PARTES, ACCESORIOS, SERVICIOS Y SUMINISTROS PARA VEHÍCULOS', 'rightCode' => 'RG-02-B-PP-1-DAC/UTR-2'])
 
     <table>
         <tr>

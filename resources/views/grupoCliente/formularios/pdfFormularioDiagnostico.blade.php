@@ -29,27 +29,10 @@
 </head>
 <body>
 
-    <table class="header-table">
-        <tr>
-            <td width="20%" rowspan="2">
-                <!-- LOGO -->
-                <br><br>JHENSE
-            </td>
-            <td width="55%" rowspan="2" class="title">
-                FORMULARIO PARA DIAGNOSTICO DE<br>
-                MANTENIMIENTO DE VEHICULOS
-            </td>
-            <td width="25%">
-                RG-01-B-PP-1-DAC/UTR-2<br>
-                CITE: 001
-            </td>
-        </tr>
-        <tr>
-            <td>
-                SCZ, {{ \Carbon\Carbon::parse($form->created_at ?? now())->format('d de F de Y') }}
-            </td>
-        </tr>
-    </table>
+    @include('grupoCliente.formularios.pdfHeader', [
+        'titulo' => 'FORMULARIO PARA DIAGNOSTICO DE<br>MANTENIMIENTO DE VEHICULOS',
+        'rightCode' => 'RG-01-B-PP-1-DAC/UTR-2<br>CITE: 001<br>SCZ, ' . \Carbon\Carbon::parse($form->created_at ?? now())->format('d de F de Y')
+    ])
 
     <table>
         <tr>

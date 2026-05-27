@@ -26,15 +26,10 @@
 </head>
 <body>
 
-    <table class="header-table">
-        <tr>
-            <td width="30%">
-                <b>JHENSE</b><br>
-            </td>
-            <td width="40%" class="title">INFORME TÉCNICO DE DIAGNOSTICO</td>
-            <td width="30%" class="n-orden">N°: <span>{{ $informe->id }}</span></td>
-        </tr>
-    </table>
+    @include('grupoCliente.formularios.pdfHeader', [
+        'titulo' => 'INFORME TÉCNICO DE DIAGNOSTICO',
+        'rightCode' => 'N°: ' . $informe->id
+    ])
 
     <p><i>Ref.: Informe de Inspección y Evaluación Técnica</i></p>
 

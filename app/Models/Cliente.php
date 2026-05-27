@@ -34,4 +34,9 @@ class Cliente extends Model
     {
         return $this->hasMany(Auto::class);
     }
+
+    public function sucursal()
+    {
+        return $this->belongsTo(Sucursal::class, 'sucursal_id');
+    }
 }

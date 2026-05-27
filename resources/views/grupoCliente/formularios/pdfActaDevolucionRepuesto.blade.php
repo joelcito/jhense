@@ -25,20 +25,7 @@
 </head>
 <body>
 
-    <table style="margin-bottom: 10px;">
-        <tr>
-            <td style="width: 25%; text-align: center; vertical-align: middle;">
-                <div style="font-size: 18px; font-weight: bold; color: #B8860B;">JHENSE</div>
-                <div style="font-size: 8px;">SERVICIOS Y PRODUCTOS</div>
-            </td>
-            <td style="width: 50%; border-left: 1px solid #000; border-right: 1px solid #000;" class="header-title">
-                ACTA DE DEVOLUCION DE<br>REPUESTOS
-            </td>
-            <td style="width: 25%; text-align: center; vertical-align: middle;">
-                <span style="font-size: 10px; color: #666;">[Imagen Transporte]</span>
-            </td>
-        </tr>
-    </table>
+    @include('grupoCliente.formularios.pdfHeader', ['titulo' => 'ACTA DE DEVOLUCION DE<br>REPUESTOS'])
 
     <table class="no-border-table" style="width: 100%; margin-bottom: 15px;">
         <tr>

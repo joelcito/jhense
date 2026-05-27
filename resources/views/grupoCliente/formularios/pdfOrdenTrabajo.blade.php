@@ -24,7 +24,7 @@
 </head>
 <body>
 
-    <div class="title">ORDEN DE TRABAJOS REALIZADOS</div>
+    @include('grupoCliente.formularios.pdfHeader', ['titulo' => 'ORDEN DE TRABAJOS REALIZADOS'])
 
     <table class="table-header">
         <tr>

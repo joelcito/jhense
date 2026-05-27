@@ -38,19 +38,7 @@
 <body>
 
     <!-- PORTADA / RESUMEN -->
-    <table class="no-border" style="margin-bottom: 20px;">
-        <tr>
-            <td style="width: 25%; text-align: center; border: none;">
-                <div style="font-size: 20px; font-weight: bold; color: #B8860B;">JHENSE</div>
-                <div style="font-size: 8px;">SERVICIOS Y PRODUCTOS</div>
-            </td>
-            <td style="width: 50%; border: none;" class="header-title">
-                REPORTE MENSUAL DE MANTENIMIENTO<br>
-                <span style="font-size: 14px;">{{ strtoupper($nombreMes) }} {{ $anio }}</span>
-            </td>
-            <td style="width: 25%; border: none;"></td>
-        </tr>
-    </table>
+    @include('grupoCliente.formularios.pdfHeader', ['titulo' => 'REPORTE MENSUAL DE MANTENIMIENTO<br><span style="font-size: 14px;">' . strtoupper($nombreMes) . ' ' . $anio . '</span>'])
 
     <table style="width: 100%; margin: 0 auto;">
         <thead>
@@ -88,7 +76,7 @@
         <div class="page-break"></div>
         
         <!-- ENCABEZADO ORDEN DE TRABAJO (IDENTICO AL OFICIAL) -->
-        <div class="ot-title">ORDEN DE TRABAJO</div>
+        @include('grupoCliente.formularios.pdfHeader', ['titulo' => 'ORDEN DE TRABAJO', 'orden' => $ot->orden])
 
         <table class="ot-table-header">
             <tr>

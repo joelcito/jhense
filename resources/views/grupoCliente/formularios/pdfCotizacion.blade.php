@@ -24,7 +24,7 @@
 </head>
 <body>
 
-    <div class="title">COTIZACIÓN</div>
+    @include('grupoCliente.formularios.pdfHeader', ['titulo' => 'COTIZACIÓN'])
 
     <table class="table-header">
         <tr>

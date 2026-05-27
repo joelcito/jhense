@@ -27,11 +27,10 @@
 </head>
 <body>
 
-    <div class="header">ORDEN DE RECEPCIÓN DE VEHÍCULOS</div>
-    
-    <div style="text-align: right; margin-bottom: 10px;">
-        <b>N° de Orden:</b> <span style="border: 1px solid #000; padding: 2px 20px; display: inline-block;">{{ $orden->id }}</span>
-    </div>
+    @include('grupoCliente.formularios.pdfHeader', [
+        'titulo' => 'ORDEN DE RECEPCIÓN DE VEHÍCULOS',
+        'rightCode' => 'N° de Orden: ' . $orden->id
+    ])
 
     <table class="info-table">
         <tr>
