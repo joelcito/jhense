@@ -23,7 +23,7 @@
                 <div class="modal-body">
                     <input type="hidden" name="id" id="id">
                     <div class="row">
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <div class="form-group">
                                 <label class="control-label">Nombre</label>
                                 <span class="text-danger">
@@ -33,11 +33,23 @@
                                 <div class="text-danger error-message" id="error-nombre"></div>
                             </div>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <div class="form-group">
                                 <label class="control-label">Codigo</label>
                                 <input name="codigo" type="text" id="codigo" class="form-control" required>
                                 <div class="text-danger error-message" id="error-codigo"></div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label class="control-label">Proveedor</label>
+                                <select name="proveedor_id" id="proveedor_id" class="form-control" required>
+                                    <option value="">Seleccione</option>
+                                    @foreach ($proveedores as $proveedor)
+                                        <option value="{{ $proveedor->id }}">{{ $proveedor->nombre }}</option>
+                                    @endforeach
+                                </select>
+                                <div class="text-danger error-message" id="error-proveedor_id"></div>
                             </div>
                         </div>
                         <div class="col-md-4">
@@ -282,6 +294,14 @@
     })
 
     $(document).ready(function() {
+        $('#modalProducto').on('shown.bs.modal', function () {
+            $('#proveedor_id').select2({
+                placeholder: 'Seleccione...',
+                dropdownParent: $('#modalProducto'),
+                width: '100%'
+            });
+        });
+
         ajaxListado();
     });
 

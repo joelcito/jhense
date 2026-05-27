@@ -11,6 +11,7 @@ use App\Http\Controllers\GrupoController;
 use App\Http\Controllers\MarcaController;
 use App\Http\Controllers\PagoController;
 use App\Http\Controllers\ProductoController;
+use App\Http\Controllers\ProveedorController;
 use App\Http\Controllers\RolController;
 use App\Http\Controllers\SucursalController;
 use App\Http\Controllers\UserController;
@@ -88,6 +89,13 @@ Route::middleware('auth')->group(function () {
         Route::post('/ajaxListado', [ConsultaController::class, 'ajaxListado'])->name('consulta.ajaxListado');
         Route::post('/guardarConsulta', [ConsultaController::class, 'guardarConsulta'])->name('consulta.guardarConsulta');
         Route::post('/eliminarConsulta', [ConsultaController::class, 'eliminarConsulta'])->name('consulta.eliminarConsulta');
+    });
+    // PROVEEDOR
+    Route::prefix('/proveedor')->group(function () {
+        Route::get('/listado', [ProveedorController::class, 'listado'])->name('proveedor.listado');
+        Route::post('/ajaxListado', [ProveedorController::class, 'ajaxListado'])->name('proveedor.ajaxListado');
+        Route::post('/guardarProveedor', [ProveedorController::class, 'guardarProveedor'])->name('proveedor.guardarProveedor');
+        Route::post('/eliminarProveedor', [ProveedorController::class, 'eliminarProveedor'])->name('proveedor.eliminarProveedor');
     });
     // PRODUCTO
     Route::prefix('/producto')->group(function () {

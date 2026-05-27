@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Movimiento;
 use App\Models\Producto;
+use App\Models\Proveedor;
 use App\Models\Sucursal;
 use App\Utils\Respuesta;
 use Dompdf\Dompdf;
@@ -17,8 +18,9 @@ class ProductoController extends Controller
     public function listado()
     {
         $sucursales = Sucursal::all();
+        $proveedores = Proveedor::all();
 
-        return view('producto.listado')->with(compact(['sucursales']));
+        return view('producto.listado')->with(compact(['sucursales', 'proveedores']));
     }
 
     public function ajaxListado(Request $request)
@@ -27,7 +29,7 @@ class ProductoController extends Controller
 
             $sucursal_id = Auth::user()->puntoVenta->sucursal_id; //nuevo
             $sucursal = Sucursal::find($sucursal_id); //nuevo
-            $productos = Producto::all();
+            $productos = Producto::with('proveedor')->get();
             $valores = [
                 'listado' => view('producto.ajaxListado')->with(compact('productos', 'sucursal'))->render()
             ];
@@ -48,6 +50,7 @@ class ProductoController extends Controller
                 'precio_compra'      => 'required',
                 'precio_venta'       => 'required',
                 'minimo_stock'       => 'required',
+                //'proveedor_id'       => 'required',
             ]);
 
             $id = $request->input('id');
@@ -57,6 +60,7 @@ class ProductoController extends Controller
             $precio_compra = $request->input('precio_compra');
             $precio_venta  = $request->input('precio_venta');
             $minimo_stock  = $request->input('minimo_stock');
+            $proveedor_id  = $request->input('proveedor_id');
             $usuario       = Auth::user();
 
             if ($id == 0) {
@@ -80,6 +84,7 @@ class ProductoController extends Controller
             $producto->precio_compra    = $precio_compra;
             $producto->precio_venta     = $precio_venta;
             $producto->minimo_stock     = $minimo_stock;
+            $producto->proveedor_id     = $proveedor_id;
             $producto->save();
 
             $data = Respuesta::success(null, "Datos obtenidos correctamente");

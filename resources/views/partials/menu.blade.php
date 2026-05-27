@@ -80,6 +80,11 @@
                             </a>
                         </li>
                         <li class="sidebar-item">
+                            <a href='{{ route('proveedor.listado') }}' class="sidebar-link">
+                                <i data-feather="home" class="feather-icon"></i><span class="hide-menu"> Proveedores </span>
+                            </a>
+                        </li>
+                        <li class="sidebar-item">
                             <a href='{{ route('producto.listado') }}' class="sidebar-link">
                                 <i data-feather="home" class="feather-icon"></i><span class="hide-menu"> Productos </span>
                             </a>

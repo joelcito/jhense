@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('productos', function (Blueprint $table) {
+        Schema::create('proveedores', function (Blueprint $table) {
             $table->id();
             $table->foreign('usuario_creador_id')->references('id')->on('users');
             $table->unsignedBigInteger('usuario_creador_id')->nullable();
@@ -20,14 +20,11 @@ return new class extends Migration
             $table->foreign('usuario_eliminador_id')->references('id')->on('users');
             $table->unsignedBigInteger('usuario_eliminador_id')->nullable();
 
-            $table->foreign('proveedor_id')->references('id')->on('proveedores');
-            $table->unsignedBigInteger('proveedor_id')->nullable();
-
             $table->string('nombre')->nullable();
-            $table->string('codigo')->nullable();
-            $table->decimal('minimo_stock', 12, 2)->nullable();
-            $table->decimal('precio_compra', 12, 2)->nullable();
-            $table->decimal('precio_venta', 12, 2)->nullable();
+            $table->string('direccion')->nullable();
+            $table->string('celular')->nullable();
+            $table->string('razon_social')->nullable();
+            $table->string('nit')->nullable();
 
             $table->string('estado')->nullable();
             $table->datetime('deleted_at')->nullable();
@@ -40,6 +37,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('productos');
+        Schema::dropIfExists('proveedores');
     }
 };

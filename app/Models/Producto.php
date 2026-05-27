@@ -15,6 +15,7 @@ class Producto extends Model
         'usuario_creador_id',
         'usuario_modificador_id',
         'usuario_eliminador_id',
+        'proveedor_id',
         'nombre',
         'codigo',
         'minimo_stock',
@@ -27,5 +28,10 @@ class Producto extends Model
     public function movimientos()
     {
         return $this->hasMany(Movimiento::class);
+    }
+
+    public function proveedor()
+    {
+        return $this->belongsTo(Proveedor::class, 'proveedor_id');
     }
 }

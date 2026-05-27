@@ -8,6 +8,7 @@
                 <th>Precio Compra</th>
                 <th>Precio Venta</th>
                 <th>Minimo Stock</th>
+                <th>Proveedor</th>
                 <th>Opciones</th>
             </tr>
         </thead>
@@ -20,6 +21,7 @@
                 <td>{{ $prod->precio_compra }}</td>
                 <td>{{ $prod->precio_venta }}</td>
                 <td>{{ $prod->minimo_stock }}</td>
+                <td>{{ $prod->proveedor->nombre ?? '' }}</td>
                 <td>
                     <button class="btn btn-icon btn-sm btn-dark" title="Stock-Sucursal"
                         onclick="adicionarStockSucursal({{ json_encode($prod) }})"><i class="fa fa-calendar-plus"></i></button>
