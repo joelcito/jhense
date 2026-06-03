@@ -9,7 +9,12 @@
                 if($user->rol_id == 1){
                     $misSucursales = \App\Models\Sucursal::where('id', '>', 1)->get();
                 }else{
-                    $misSucursales = \App\Models\Sucursal::where('id', $user->puntoVenta->sucursal_id)->limit(1)->get();
+                    if(isset($user->puntoVenta->sucursal_id) && $user->puntoVenta->sucursal_id > 1){
+                        $misSucursales = \App\Models\Sucursal::where('id', $user->puntoVenta->sucursal_id)->limit(1)->get();
+
+                    }else{
+                        $misSucursales = null;
+                    }
                 }
             @endphp
             <ul id="sidebarnav">
@@ -89,6 +94,13 @@
                                 <i data-feather="home" class="feather-icon"></i><span class="hide-menu"> Productos </span>
                             </a>
                         </li>
+
+                        {{-- AQUI VA LAS SOLICITUDES DE PRODUCTOS --}}
+                        <li class="sidebar-item">
+                            <a href="{{ route('solicitudRepuesto.listado') }}" class="sidebar-link">
+                                <i data-feather="home" class="feather-icon"></i><span class="hide-menu"> Solicitudes </span>
+                            </a>
+                        </li>
                     </ul>
                 </li>
                 <!-- Pagos-->
@@ -111,7 +123,7 @@
                     </ul>
                 </li>
 
-                @if ($user->puntoVenta->sucursal_id && $user->puntoVenta->sucursal_id > 1)
+                @if (isset($user->puntoVenta->sucursal_id) && $user->puntoVenta->sucursal_id > 1)
                     {{-- TALLERES --}}
                     <li class="nav-small-cap"><i class="mdi mdi-dots-horizontal"></i> <span class="hide-menu">TALLERES</span></li>
                     @foreach ($misSucursales as $ms)

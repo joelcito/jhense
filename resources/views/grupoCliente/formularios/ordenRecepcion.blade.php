@@ -310,9 +310,23 @@
                     
                     // Cargar Formulario 11 (Acta de Devolución de Repuestos)
                     cargarDatosActaDevolucionRepuesto(orden);
+
+                    // Cargar Formulario 12 (Solicitud de Repuestos)
+                    if(typeof cargarSolicitudRepuesto === 'function') {
+                        cargarSolicitudRepuesto(orden.id);
+                    }
                     
-                    // Mostrar tab 1 por defecto
-                    $('#pills-form1-tab').tab('show');
+                    // Mostrar tab guardado o el 1 por defecto
+                    let subTab = localStorage.getItem(`gc_${grupoCliente.id}_subTab`);
+                    if (subTab) {
+                        $('#' + subTab).tab('show');
+                    } else {
+                        $('#pills-form1-tab').tab('show');
+                    }
+                    
+                    localStorage.setItem(`gc_${grupoCliente.id}_modoOrden`, 'true');
+                    localStorage.setItem(`gc_${grupoCliente.id}_ordenActiva`, id);
+                    
                     $('#tituloOrdenActual').text('EDITANDO ORDEN DE TRABAJO N° ' + orden.id);
                 } else {
                     Swal.fire('Error', 'No se pudo obtener la orden', 'error');
@@ -324,5 +338,8 @@
     function cancelarOrden() {
         $('#contenedorFormularioOrden').hide();
         $('#listaOrdenesRecepcion').fadeIn();
+        localStorage.removeItem(`gc_${grupoCliente.id}_modoOrden`);
+        localStorage.removeItem(`gc_${grupoCliente.id}_ordenActiva`);
+        localStorage.removeItem(`gc_${grupoCliente.id}_subTab`);
     }
 </script>

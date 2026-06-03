@@ -214,6 +214,9 @@
                         <li class="nav-item">
                             <a class="nav-link" id="pills-form10-tab" data-toggle="pill" href="#pills-form10" role="tab" aria-controls="pills-form10" aria-selected="false">10. Devolución Repuestos</a>
                         </li>
+                        <li class="nav-item">
+                            <a class="nav-link" id="pills-form11-tab" data-toggle="pill" href="#pills-form11" role="tab" aria-controls="pills-form11" aria-selected="false">11. Solicitud Repuestos</a>
+                        </li>
                         <!-- Aquí se agregarán los demás formularios -->
                     </ul>
                     
@@ -266,6 +269,11 @@
                         <!-- FORM 11: ACTA DE DEVOLUCIÓN DE REPUESTOS -->
                         <div class="tab-pane fade" id="pills-form10" role="tabpanel" aria-labelledby="pills-form10-tab">
                             @include('grupoCliente.formularios.actaDevolucionRepuesto')
+                        </div>
+
+                        <!-- FORM 12: SOLICITUD DE REPUESTOS -->
+                        <div class="tab-pane fade" id="pills-form11" role="tabpanel" aria-labelledby="pills-form11-tab">
+                            @include('grupoCliente.formularios.solicitudRepuesto')
                         </div>
                     </div>
                 </div>
@@ -328,6 +336,34 @@
     const grupoCliente = @json($grupoCliente);
 
     $(document).ready(function() {
+        ajaxListado();
+
+        // Guardar pestañas activas
+        $('a[data-toggle="pill"]').on('shown.bs.tab', function (e) {
+            let id = $(e.target).attr('id');
+            if ($(e.target).closest('#pills-tab').length) {
+                localStorage.setItem(`gc_${grupoCliente.id}_mainTab`, id);
+            } else if ($(e.target).closest('#pills-tab-orden').length) {
+                localStorage.setItem(`gc_${grupoCliente.id}_subTab`, id);
+            }
+        });
+
+        // Restaurar main tab
+        let mainTab = localStorage.getItem(`gc_${grupoCliente.id}_mainTab`);
+        if (mainTab) {
+            $('#' + mainTab).tab('show');
+        }
+
+        // Restaurar estado de orden
+        let modoOrden = localStorage.getItem(`gc_${grupoCliente.id}_modoOrden`);
+        let ordenActiva = localStorage.getItem(`gc_${grupoCliente.id}_ordenActiva`);
+        if (modoOrden === 'true' && ordenActiva) {
+            // Llama a editarOrden, el cual mostrará la vista y restaurará el subTab
+            if (typeof editarOrden === 'function') {
+                editarOrden(ordenActiva);
+            }
+        }
+
         $('#modalGrupo').on('shown.bs.modal', function () {
             $('#cliente_id').select2({
                 placeholder: 'Seleccione...',
@@ -346,7 +382,46 @@
             width: '100%'
         });
 
-        ajaxListado();
+        $('#buscador_producto').select2({
+            placeholder: 'Escriba para buscar producto...',
+            width: '100%',
+            allowClear: true,
+            ajax: {
+                url: "{{ route('grupoCliente.buscarProducto') }}",
+                dataType: 'json',
+                delay: 250,
+                data: function(params) {
+                    return {
+                        q: params.term,
+                        sucursal_id: sucursal.id
+                    };
+                },
+                processResults: function(data) {
+                    return {
+                        results: $.map(data, function(item) {
+                            return {
+                                text: item.codigo + ' - ' + item.nombre,
+                                id: item.id,
+                                precio: item.precio_venta || 0,
+                                stock_local: item.stock_local || 0,
+                                stock_central: item.stock_central || 0
+                            }
+                        })
+                    };
+                },
+                cache: true
+            }
+        }).on('select2:select', function(e) {
+            let data = e.params.data;
+            $('#prod_sel_id').val(data.id);
+            $('#prod_sel_texto').val(data.text);
+            $('#prod_sel_precio').val(parseFloat(data.precio).toFixed(2));
+            $('#prod_sel_stock_local').val(data.stock_local);
+            $('#prod_sel_stock_central').val(data.stock_central);
+            $('#prod_sel_cantidad').val(1);
+        }).on('select2:unselect', function(e) {
+            limpiarBuscadorRepuesto();
+        });
     });
 
     function ajaxListado(){

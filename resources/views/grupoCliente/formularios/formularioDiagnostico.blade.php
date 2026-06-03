@@ -40,19 +40,17 @@
             <hr>
             
             <div class="row">
-                <!-- COLUMNA IZQUIERDA: REQUERIMIENTOS DE SERVICIO -->
                 <div class="col-md-8">
                     <h5 class="bg-secondary text-white p-2 text-center">REQUERIMIENTO DE SERVICIO</h5>
                     
                     @php
-                        // Grouping assigned services
                         $servicios = $grupoCliente->servicios ?? [];
                         
                         $preventivos = [];
                         $correctivos = [];
                         $otros = [];
                         
-                        foreach($servicios as $cs) {
+                        /* foreach($servicios as $cs) {
                             $cat = strtoupper($cs->categoria ?? '');
                             if($cat == 'PREVENTIVO') {
                                 $preventivos[] = $cs->nombre ?? '';
@@ -61,7 +59,7 @@
                             } else {
                                 $otros[] = $cs->nombre ?? '';
                             }
-                        }
+                        } */
                     @endphp
 
                     <!-- PREVENTIVO -->
@@ -98,7 +96,6 @@
                     </div>
                 </div>
 
-                <!-- COLUMNA DERECHA: INVENTARIO Y RECEPCION -->
                 <div class="col-md-4">
                     <h5 class="bg-secondary text-white p-2 text-center">INVENTARIO</h5>
                     <p class="text-muted small text-center">(Heredado de la Orden de Recepción - Solo lectura)</p>
@@ -106,7 +103,6 @@
                     <div class="table-responsive">
                         <table class="table table-sm table-bordered">
                             <tbody id="form3_inventario_list">
-                                <!-- Llenado por AJAX -->
                             </tbody>
                         </table>
                     </div>

@@ -2,21 +2,25 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ActaDevolucionRepuesto;
+use App\Models\ActaEntrega;
 use App\Models\Cliente;
 use App\Models\ClienteServicio;
 use App\Models\Consulta;
 use App\Models\Cotizacion;
-use App\Models\OrdenTrabajo;
 use App\Models\FormularioAutorizacion;
-use App\Models\RecepcionRepuesto;
-use App\Models\ReporteFotografico;
-use App\Models\ActaEntrega;
-use App\Models\ActaDevolucionRepuesto;
 use App\Models\FormularioDiagnostico;
 use App\Models\Grupo;
 use App\Models\GrupoCliente;
 use App\Models\InformeDiagnostico;
+use App\Models\Movimiento;
 use App\Models\OrdenRecepcion;
+use App\Models\OrdenTrabajo;
+use App\Models\Producto;
+use App\Models\RecepcionRepuesto;
+use App\Models\ReporteFotografico;
+use App\Models\SolicitudRepuesto;
+use App\Models\SolicitudRepuestoDetalle;
 use App\Models\Sucursal;
 use App\Models\User;
 use App\Utils\Respuesta;
@@ -29,10 +33,11 @@ use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
-class GrupoClienteController extends Controller {
+class GrupoClienteController extends Controller
+{
 
-    
-    
+
+
     private function _agregarLogosExcel($hoja, $orden, $lastCol, $titleRow = 1)
     {
         // Adjust the row height where the title is located
@@ -40,7 +45,7 @@ class GrupoClienteController extends Controller {
         $hoja->getStyle("A" . $titleRow)->getAlignment()->setVertical(\PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_BOTTOM);
 
         $sucursalLogo = null;
-        if(isset($orden) && isset($orden->grupoCliente->cliente->sucursal->logo)){
+        if (isset($orden) && isset($orden->grupoCliente->cliente->sucursal->logo)) {
             $sucursalLogo = $orden->grupoCliente->cliente->sucursal->logo;
         }
 
@@ -58,7 +63,7 @@ class GrupoClienteController extends Controller {
 
         // The right logo goes in $lastCol
         $logoJhensePath = public_path("assets/imagenes/logo_jhense.png");
-        if(file_exists($logoJhensePath)){
+        if (file_exists($logoJhensePath)) {
             $drawing2 = new \PhpOffice\PhpSpreadsheet\Worksheet\Drawing();
             $drawing2->setName("Logo General");
             $drawing2->setPath($logoJhensePath);
@@ -69,8 +74,6 @@ class GrupoClienteController extends Controller {
             $drawing2->setWorksheet($hoja);
         }
     }
-
-
 
     public function listado($sucursal_id, $grupo_id)
     {
@@ -165,14 +168,18 @@ class GrupoClienteController extends Controller {
         $sucursal = Sucursal::find($grupoCliente->cliente->sucursal_id);
         $grupo = Grupo::find($grupoCliente->grupo_id);
 
-        // Catálogo improvisado de servicios (todos los únicos registrados en el sistema)
+        // Catálogo improvisado de servicios
         $catalogoServicios = ClienteServicio::select('nombre', 'categoria', 'unidad_medida', 'costo')
             ->whereNotNull('nombre')
             ->groupBy('nombre', 'categoria', 'unidad_medida', 'costo')
             ->get();
 
-        // Obtener mecánicos de la sucursal (rol_id = 4)
-        $mecanicos = User::where('sucursal_id', $sucursal->id)->where('rol_id', 4)->get();
+        // Obtener mecánicos de la sucursal
+        $mecanicos = User::where('rol_id', 4)
+            ->whereHas('puntoVenta', function ($query) use ($sucursal) {
+                $query->where('sucursal_id', $sucursal->id);
+            })
+            ->get();
 
         // Obtener consultas para el autocompletado de diagnóstico
         $ordenesRecepcion = OrdenRecepcion::with(['usuarioCreador', 'usuarioModificador', 'auto.marca'])
@@ -2682,7 +2689,7 @@ class GrupoClienteController extends Controller {
             $hoja->getStyle('A' . $row)->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setARGB('FFFFE699');
             $hoja->getStyle('A' . $row . ':F' . $row)->applyFromArray($borderThin);
             $row++;
-            
+
             $hoja->setCellValue('A' . $row, 'DESCRIPCION');
             $hoja->mergeCells('A' . $row . ':B' . $row);
             $hoja->setCellValue('C' . $row, 'RESPALDO DE SERVICIO o REPUESTO INICIAL');
@@ -2702,7 +2709,7 @@ class GrupoClienteController extends Controller {
                 $hoja->getStyle('A' . $row)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
                 $hoja->getStyle('A' . $row)->getAlignment()->setWrapText(true);
                 $hoja->getStyle('A' . $row)->getFont()->setBold(true);
-                
+
                 $hoja->mergeCells('C' . $row . ':D' . $row);
                 $hoja->mergeCells('E' . $row . ':F' . $row);
                 $hoja->getStyle('A' . $row . ':F' . $row)->applyFromArray($borderThin);
@@ -3797,5 +3804,514 @@ class GrupoClienteController extends Controller {
 
         $fileName = $placa . ' - ' . $nombres . ' - ' . $titulo;
         return preg_replace('/[\/\\\:\*\?\"\<\>\|]/', '-', $fileName);
+    }
+    //========================================================================
+    // SOLICITUD DE REPUESTOS (FORMULARIO 12)
+    //========================================================================
+    public function guardarSolicitudRepuesto(Request $request)
+    {
+        if ($request->ajax()) {
+            $orden_recepcion_id = $request->input('orden_recepcion_id');
+            $usuario_id = Auth::id();
+            $sucursal_local_id = Auth::user()->puntoVenta->sucursal_id ?? 1;
+
+            // HELPER: procesar un tipo de solicitud ('LOCAL', 'CENTRAL')
+            $procesarItems = function ($tipo_solicitud, $items_input, $sucursal_id) use ($orden_recepcion_id, $usuario_id) {
+                $solicitudes = SolicitudRepuesto::where('orden_recepcion_id', $orden_recepcion_id)->where('tipo_solicitud', $tipo_solicitud)->get();
+                $pendiente = $solicitudes->where('estado', 'PENDIENTE')->first();
+
+                $items_to_save = [];
+                $total_pending = 0;
+
+                foreach ($items_input as $item) {
+                    if (!empty($item['detalle_id'])) {
+                        $det = SolicitudRepuestoDetalle::find($item['detalle_id']);
+                        if ($det && $det->solicitud_repuesto_id && $det->solicitudRepuesto && $det->solicitudRepuesto->estado !== 'PENDIENTE') {
+                            continue; // Ignorar items ya procesados
+                        }
+                    }
+                    $items_to_save[] = $item;
+                    $total_pending += (($item['cantidad'] ?? 0) * ($item['precio'] ?? 0));
+                }
+
+                if (count($items_to_save) > 0) {
+                    if (!$pendiente) {
+                        $pendiente = new SolicitudRepuesto([
+                            'orden_recepcion_id' => $orden_recepcion_id,
+                            'tipo_solicitud' => $tipo_solicitud,
+                            'estado' => 'PENDIENTE'
+                        ]);
+                        $pendiente->usuario_creador_id = $usuario_id;
+                        $pendiente->sucursal_id = $sucursal_id;
+                    } else {
+                        $pendiente->usuario_modificador_id = $usuario_id;
+                    }
+                    $pendiente->total_general = $total_pending;
+                    $pendiente->save();
+
+                    $detalles_enviados_ids = [];
+                    foreach ($items_to_save as $item) {
+                        if (!empty($item['detalle_id'])) {
+                            $det = SolicitudRepuestoDetalle::find($item['detalle_id']);
+                            if ($det && $det->solicitud_repuesto_id == $pendiente->id) {
+                                $det->update([
+                                    'usuario_modificador_id' => $usuario_id,
+                                    'producto_id' => $item['producto_id'] ?? null,
+                                    'cantidad' => $item['cantidad'] ?? 0,
+                                    'precio' => $item['precio'] ?? 0,
+                                    'subtotal' => $item['subtotal'] ?? 0,
+                                ]);
+                                $detalles_enviados_ids[] = $det->id;
+                                continue;
+                            }
+                        }
+
+                        $nuevo_det = $pendiente->detalles()->create([
+                            'usuario_creador_id' => $usuario_id,
+                            'producto_id' => $item['producto_id'] ?? null,
+                            'cantidad' => $item['cantidad'] ?? 0,
+                            'precio' => $item['precio'] ?? 0,
+                            'subtotal' => $item['subtotal'] ?? 0,
+                        ]);
+                        $detalles_enviados_ids[] = $nuevo_det->id;
+                    }
+
+                    // Solo eliminar los que ya no vienen en la solicitud actual (que el usuario borró)
+                    $pendiente->detalles()->whereNotIn('id', $detalles_enviados_ids)->delete();
+                } else if ($pendiente) {
+                    $pendiente->detalles()->delete();
+                    $pendiente->delete();
+                }
+            };
+
+            // LOCAL
+            $locales = array_values($request->input('local') ?: []);
+            $procesarItems('LOCAL', $locales, $sucursal_local_id);
+
+            // CENTRAL
+            $centrales = array_values($request->input('central') ?: []);
+            $procesarItems('CENTRAL', $centrales, 1);
+
+            // EXTERNOS
+            $externos = array_values($request->input('externo') ?: []);
+            $externosArchivos = $request->file('externo_archivos') ?: [];
+            $externos = array_filter($externos, function ($ext) {
+                return !empty($ext['descripcion']);
+            });
+
+            $solicitudes_ext = SolicitudRepuesto::where('orden_recepcion_id', $orden_recepcion_id)->where('tipo_solicitud', 'EXTERNO')->get();
+            $pendiente_ext = $solicitudes_ext->where('estado', 'PENDIENTE')->first();
+
+            $items_ext_to_save = [];
+            $archivos_ext_to_save = [];
+            $total_pending_ext = 0;
+
+            foreach ($externos as $index => $item) {
+                if (!empty($item['detalle_id'])) {
+                    $det = SolicitudRepuestoDetalle::find($item['detalle_id']);
+                    if ($det && $det->solicitudRepuesto && $det->solicitudRepuesto->estado !== 'PENDIENTE') {
+                        continue;
+                    }
+                }
+                $items_ext_to_save[] = $item;
+                $archivos_ext_to_save[] = $externosArchivos[$index] ?? null;
+                $total_pending_ext += (($item['cantidad'] ?? 0) * ($item['precio'] ?? 0));
+            }
+
+            if (count($items_ext_to_save) > 0) {
+                if (!$pendiente_ext) {
+                    $pendiente_ext = new SolicitudRepuesto([
+                        'orden_recepcion_id' => $orden_recepcion_id,
+                        'tipo_solicitud' => 'EXTERNO',
+                        'estado' => 'PENDIENTE'
+                    ]);
+                    $pendiente_ext->usuario_creador_id = $usuario_id;
+                    $pendiente_ext->sucursal_id = $sucursal_local_id;
+                } else {
+                    $pendiente_ext->usuario_modificador_id = $usuario_id;
+                }
+                $pendiente_ext->total_general = $total_pending_ext;
+                $pendiente_ext->save();
+
+                $detalles_ext_ids = [];
+                foreach ($items_ext_to_save as $idx => $ext) {
+                    $filePath = $ext['path_archivo'] ?? null;
+                    if (isset($archivos_ext_to_save[$idx]['archivo'])) {
+                        $file = $archivos_ext_to_save[$idx]['archivo'];
+                        $fileName = time() . '_' . $file->getClientOriginalName();
+                        $filePath = $file->storeAs('solicitud_repuestos', $fileName, 'public');
+                    }
+
+                    if (!empty($ext['detalle_id'])) {
+                        $det = SolicitudRepuestoDetalle::find($ext['detalle_id']);
+                        if ($det && $det->solicitud_repuesto_id == $pendiente_ext->id) {
+                            $updateData = [
+                                'usuario_modificador_id' => $usuario_id,
+                                'descripcion' => $ext['descripcion'] ?? '',
+                                'cantidad' => $ext['cantidad'] ?? 0,
+                                'precio' => $ext['precio'] ?? 0,
+                                'subtotal' => $ext['subtotal'] ?? 0,
+                            ];
+                            if ($filePath) {
+                                $updateData['path_archivo'] = $filePath;
+                            }
+                            $det->update($updateData);
+                            $detalles_ext_ids[] = $det->id;
+                            continue;
+                        }
+                    }
+
+                    $nuevo_ext = $pendiente_ext->detalles()->create([
+                        'usuario_creador_id' => $usuario_id,
+                        'descripcion' => $ext['descripcion'] ?? '',
+                        'cantidad' => $ext['cantidad'] ?? 0,
+                        'precio' => $ext['precio'] ?? 0,
+                        'subtotal' => $ext['subtotal'] ?? 0,
+                        'path_archivo' => $filePath
+                    ]);
+                    $detalles_ext_ids[] = $nuevo_ext->id;
+                }
+
+                $pendiente_ext->detalles()->whereNotIn('id', $detalles_ext_ids)->delete();
+            } else if ($pendiente_ext) {
+                $pendiente_ext->detalles()->delete();
+                $pendiente_ext->delete();
+            }
+
+            return response()->json([
+                'estado' => true,
+            ]);
+        }
+        return response()->json(['estado' => false, 'mensaje' => 'Error al guardar.']);
+    }
+
+    public function obtenerSolicitudRepuesto(Request $request)
+    {
+        if ($request->ajax()) {
+            $orden_recepcion_id = $request->input('orden_recepcion_id');
+            $solicitudes = SolicitudRepuesto::with('detalles.producto')->where('orden_recepcion_id', $orden_recepcion_id)->get();
+
+            if ($solicitudes->count() > 0) {
+                $data = [
+                    'orden_recepcion_id' => $orden_recepcion_id,
+                    'total_local' => 0,
+                    'total_central' => 0,
+                    'total_externos' => 0,
+                    'total_general' => 0,
+                    'local_productos' => [],
+                    'central_productos' => [],
+                    'externos_productos' => []
+                ];
+
+                foreach ($solicitudes as $sol) {
+                    $data['total_general'] += $sol->total_general;
+                    if ($sol->tipo_solicitud == 'LOCAL') {
+                        $data['total_local'] += $sol->total_general;
+                        foreach ($sol->detalles as $det) {
+                            $data['local_productos'][] = [
+                                'detalle_id' => $det->id,
+                                'solicitud_estado' => $sol->estado,
+                                'producto_id' => $det->producto_id,
+                                'producto_texto' => $det->producto->nombre ?? '',
+                                'cantidad' => $det->cantidad,
+                                'precio' => $det->precio,
+                                'subtotal' => $det->subtotal,
+                                'aprobado' => $det->aprobado
+                            ];
+                        }
+                    } else if ($sol->tipo_solicitud == 'CENTRAL') {
+                        $data['total_central'] += $sol->total_general;
+                        foreach ($sol->detalles as $det) {
+                            $data['central_productos'][] = [
+                                'detalle_id' => $det->id,
+                                'solicitud_estado' => $sol->estado,
+                                'producto_id' => $det->producto_id,
+                                'producto_texto' => $det->producto->nombre ?? '',
+                                'cantidad' => $det->cantidad,
+                                'precio' => $det->precio,
+                                'subtotal' => $det->subtotal,
+                                'aprobado' => $det->aprobado
+                            ];
+                        }
+                    } else if ($sol->tipo_solicitud == 'EXTERNO') {
+                        $data['total_externos'] += $sol->total_general;
+                        foreach ($sol->detalles as $det) {
+                            $data['externos_productos'][] = [
+                                'detalle_id' => $det->id,
+                                'solicitud_estado' => $sol->estado,
+                                'descripcion' => $det->descripcion,
+                                'cantidad' => $det->cantidad,
+                                'precio' => $det->precio,
+                                'subtotal' => $det->subtotal,
+                                'path_archivo' => $det->path_archivo
+                            ];
+                        }
+                    }
+                }
+
+                $estados = $solicitudes->pluck('estado')->toArray();
+                if (in_array('PENDIENTE', $estados)) {
+                    $data['estado'] = 'PENDIENTE';
+                } else if (in_array('RECHAZADO', $estados)) {
+                    $data['estado'] = 'RECHAZADO';
+                } else {
+                    $data['estado'] = 'APROBADO';
+                }
+
+                return response()->json([
+                    'estado' => true,
+                    'data' => $data
+                ]);
+            }
+        }
+        return response()->json(['estado' => false]);
+    }
+
+    public function buscarProducto(Request $request)
+    {
+        $q = $request->input('q');
+        $es_central = $request->input('es_central') === 'true';
+        $sucursal_id = $request->input('sucursal_id');
+
+        $query = Producto::query();
+
+        // Buscar por texto
+        if ($q) {
+            $query->where(function ($qq) use ($q) {
+                $qq->where('nombre', 'like', "%{$q}%")
+                    ->orWhere('codigo', 'like', "%{$q}%");
+            });
+        }
+
+        $productos = $query->limit(20)->get();
+
+        $mov = new Movimiento();
+        foreach ($productos as $prod) {
+            $prod->stock_local = $mov->cantidaDisponile($sucursal_id, $prod->id);
+            $prod->stock_central = $mov->cantidaDisponile(1, $prod->id);
+        }
+
+        return response()->json($productos);
+    }
+
+    public function descargarPdfSolicitudRepuesto($id) // $id is orden_recepcion_id now
+    {
+        $orden = OrdenRecepcion::findOrFail($id);
+        $solicitudes = SolicitudRepuesto::with('detalles.producto')->where('orden_recepcion_id', $id)->get();
+        $grupoCliente = $orden->grupoCliente;
+        $titulo = "12. SOLICITUD DE REPUESTOS / INSUMOS";
+
+        $data = [
+            'total_local' => 0,
+            'total_central' => 0,
+            'total_externos' => 0,
+            'total_general' => 0,
+            'local_productos' => [],
+            'central_productos' => [],
+            'externos_productos' => []
+        ];
+
+        foreach ($solicitudes as $sol) {
+            if ($sol->tipo_solicitud == 'LOCAL' && $sol->estado == 'APROBADO') {
+                foreach ($sol->detalles as $det) {
+                    if ($det->aprobado) {
+                        $data['local_productos'][] = $det;
+                        $data['total_local'] += $det->subtotal;
+                    }
+                }
+            } else if ($sol->tipo_solicitud == 'CENTRAL' && $sol->estado == 'APROBADO') {
+                foreach ($sol->detalles as $det) {
+                    if ($det->aprobado) {
+                        $data['central_productos'][] = $det;
+                        $data['total_central'] += $det->subtotal;
+                    }
+                }
+            } else if ($sol->tipo_solicitud == 'EXTERNO') {
+                foreach ($sol->detalles as $det) {
+                    $data['externos_productos'][] = $det;
+                    $data['total_externos'] += $det->subtotal;
+                }
+            }
+        }
+        $data['total_general'] = $data['total_local'] + $data['total_central'] + $data['total_externos'];
+
+        $pdf = Pdf::loadView('grupoCliente.formularios.pdfSolicitudRepuesto', compact('data', 'orden', 'grupoCliente', 'titulo'))
+            ->setPaper('letter');
+
+        $fileName = $this->generarNombreArchivo($titulo, $orden, $grupoCliente);
+        return $pdf->download($fileName . '.pdf');
+    }
+
+    public function descargarExcelSolicitudRepuesto($id)
+    {
+        $orden = OrdenRecepcion::findOrFail($id);
+        $solicitudes = SolicitudRepuesto::with('detalles.producto')->where('orden_recepcion_id', $id)->get();
+
+        $data = [
+            'total_local' => 0,
+            'total_central' => 0,
+            'total_externos' => 0,
+            'total_general' => 0,
+            'local_productos' => [],
+            'central_productos' => [],
+            'externos_productos' => []
+        ];
+
+        foreach ($solicitudes as $sol) {
+            if ($sol->tipo_solicitud == 'LOCAL' && $sol->estado == 'APROBADO') {
+                foreach ($sol->detalles as $det) {
+                    if ($det->aprobado) {
+                        $data['local_productos'][] = $det;
+                        $data['total_local'] += $det->subtotal;
+                    }
+                }
+            } else if ($sol->tipo_solicitud == 'CENTRAL' && $sol->estado == 'APROBADO') {
+                foreach ($sol->detalles as $det) {
+                    if ($det->aprobado) {
+                        $data['central_productos'][] = $det;
+                        $data['total_central'] += $det->subtotal;
+                    }
+                }
+            } else if ($sol->tipo_solicitud == 'EXTERNO') {
+                foreach ($sol->detalles as $det) {
+                    $data['externos_productos'][] = $det;
+                    $data['total_externos'] += $det->subtotal;
+                }
+            }
+        }
+        $data['total_general'] = $data['total_local'] + $data['total_central'] + $data['total_externos'];
+
+        $spreadsheet = new Spreadsheet();
+        $hoja = $spreadsheet->getActiveSheet();
+        $hoja->setTitle('Solicitud Repuestos');
+
+        $borderThin = [
+            'borders' => [
+                'allBorders' => [
+                    'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+                    'color' => ['argb' => 'FF000000'],
+                ],
+            ],
+        ];
+
+        $titulo = "12. SOLICITUD DE REPUESTOS / INSUMOS";
+        $hoja->setCellValue('C1', $titulo);
+        $hoja->getStyle('C1')->getFont()->setBold(true)->setSize(16);
+        $this->_agregarLogosExcel($hoja, $orden, 'G', 1);
+
+        $row = 3;
+        $hoja->setCellValue('A' . $row, 'CLIENTE:');
+        $hoja->setCellValue('B' . $row, ($orden->grupoCliente->cliente->nombres ?? '') . ' ' . ($orden->grupoCliente->cliente->ap_paterno ?? ''));
+        $row++;
+        $hoja->setCellValue('A' . $row, 'PLACA:');
+        $hoja->setCellValue('B' . $row, $orden->auto->placa ?? '');
+        $row += 2;
+
+        // TABLE LOCAL
+        $hoja->setCellValue('A' . $row, '1. PRODUCTOS SOLICITADOS A SUCURSAL LOCAL');
+        $hoja->mergeCells('A' . $row . ':E' . $row);
+        $hoja->getStyle('A' . $row)->getFont()->setBold(true);
+        $hoja->getStyle('A' . $row)->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setARGB('FFD9E1F2');
+        $row++;
+
+        $hoja->setCellValue('A' . $row, 'PRODUCTO');
+        $hoja->mergeCells('A' . $row . ':B' . $row);
+        $hoja->setCellValue('C' . $row, 'CANTIDAD');
+        $hoja->setCellValue('D' . $row, 'PRECIO UNIT.');
+        $hoja->setCellValue('E' . $row, 'SUBTOTAL');
+        $hoja->getStyle('A' . $row . ':E' . $row)->getFont()->setBold(true);
+        $hoja->getStyle('A' . $row . ':E' . $row)->applyFromArray($borderThin);
+        $row++;
+
+        foreach ($data['local_productos'] as $item) {
+            $hoja->setCellValue('A' . $row, $item->producto->nombre ?? '');
+            $hoja->mergeCells('A' . $row . ':B' . $row);
+            $hoja->setCellValue('C' . $row, $item->cantidad ?? 0);
+            $hoja->setCellValue('D' . $row, $item->precio ?? 0);
+            $hoja->setCellValue('E' . $row, $item->subtotal ?? 0);
+            $hoja->getStyle('A' . $row . ':E' . $row)->applyFromArray($borderThin);
+            $row++;
+        }
+        $hoja->setCellValue('D' . $row, 'SUBTOTAL LOCAL:');
+        $hoja->setCellValue('E' . $row, $data['total_local']);
+        $hoja->getStyle('D' . $row . ':E' . $row)->getFont()->setBold(true);
+        $row += 2;
+
+        // TABLE CENTRAL
+        $hoja->setCellValue('A' . $row, '2. PRODUCTOS SOLICITADOS A SUCURSAL CENTRAL');
+        $hoja->mergeCells('A' . $row . ':E' . $row);
+        $hoja->getStyle('A' . $row)->getFont()->setBold(true);
+        $hoja->getStyle('A' . $row)->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setARGB('FFE2EFDA');
+        $row++;
+
+        $hoja->setCellValue('A' . $row, 'PRODUCTO');
+        $hoja->mergeCells('A' . $row . ':B' . $row);
+        $hoja->setCellValue('C' . $row, 'CANTIDAD');
+        $hoja->setCellValue('D' . $row, 'PRECIO UNIT.');
+        $hoja->setCellValue('E' . $row, 'SUBTOTAL');
+        $hoja->getStyle('A' . $row . ':E' . $row)->getFont()->setBold(true);
+        $hoja->getStyle('A' . $row . ':E' . $row)->applyFromArray($borderThin);
+        $row++;
+
+        foreach ($data['central_productos'] as $item) {
+            $hoja->setCellValue('A' . $row, $item->producto->nombre ?? '');
+            $hoja->mergeCells('A' . $row . ':B' . $row);
+            $hoja->setCellValue('C' . $row, $item->cantidad ?? 0);
+            $hoja->setCellValue('D' . $row, $item->precio ?? 0);
+            $hoja->setCellValue('E' . $row, $item->subtotal ?? 0);
+            $hoja->getStyle('A' . $row . ':E' . $row)->applyFromArray($borderThin);
+            $row++;
+        }
+        $hoja->setCellValue('D' . $row, 'SUBTOTAL CENTRAL:');
+        $hoja->setCellValue('E' . $row, $data['total_central']);
+        $hoja->getStyle('D' . $row . ':E' . $row)->getFont()->setBold(true);
+        $row += 2;
+
+        // TABLE EXTERNOS
+        $hoja->setCellValue('A' . $row, '3. COMPRAS EXTERNAS');
+        $hoja->mergeCells('A' . $row . ':E' . $row);
+        $hoja->getStyle('A' . $row)->getFont()->setBold(true);
+        $hoja->getStyle('A' . $row)->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setARGB('FFFFF2CC');
+        $row++;
+
+        $hoja->setCellValue('A' . $row, 'DESCRIPCION / NOMBRE');
+        $hoja->mergeCells('A' . $row . ':B' . $row);
+        $hoja->setCellValue('C' . $row, 'CANTIDAD');
+        $hoja->setCellValue('D' . $row, 'PRECIO UNIT.');
+        $hoja->setCellValue('E' . $row, 'SUBTOTAL');
+        $hoja->getStyle('A' . $row . ':E' . $row)->getFont()->setBold(true);
+        $hoja->getStyle('A' . $row . ':E' . $row)->applyFromArray($borderThin);
+        $row++;
+
+        foreach ($data['externos_productos'] as $item) {
+            $hoja->setCellValue('A' . $row, $item->descripcion ?? '');
+            $hoja->mergeCells('A' . $row . ':B' . $row);
+            $hoja->setCellValue('C' . $row, $item->cantidad ?? 0);
+            $hoja->setCellValue('D' . $row, $item->precio ?? 0);
+            $hoja->setCellValue('E' . $row, $item->subtotal ?? 0);
+            $hoja->getStyle('A' . $row . ':E' . $row)->applyFromArray($borderThin);
+            $row++;
+        }
+        $hoja->setCellValue('D' . $row, 'SUBTOTAL EXTERNOS:');
+        $hoja->setCellValue('E' . $row, $data['total_externos']);
+        $hoja->getStyle('D' . $row . ':E' . $row)->getFont()->setBold(true);
+        $row += 2;
+
+        $hoja->setCellValue('D' . $row, 'TOTAL GENERAL:');
+        $hoja->setCellValue('E' . $row, $data['total_general']);
+        $hoja->getStyle('D' . $row . ':E' . $row)->getFont()->setBold(true)->getColor()->setARGB('FFFF0000');
+
+        foreach (range('A', 'G') as $columnID) {
+            $hoja->getColumnDimension($columnID)->setAutoSize(true);
+        }
+
+        $writer = new Xlsx($spreadsheet);
+        $nombre_archivo = $this->generarNombreArchivo($titulo, $orden, $orden->grupoCliente) . '.xlsx';
+
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header('Content-Disposition: attachment;filename="' . $nombre_archivo . '"');
+        header('Cache-Control: max-age=0');
+        $writer->save('php://output');
+        exit;
     }
 }

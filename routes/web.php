@@ -13,6 +13,7 @@ use App\Http\Controllers\PagoController;
 use App\Http\Controllers\ProductoController;
 use App\Http\Controllers\ProveedorController;
 use App\Http\Controllers\RolController;
+use App\Http\Controllers\SolicitudRepuestoController;
 use App\Http\Controllers\SucursalController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
@@ -117,6 +118,13 @@ Route::middleware('auth')->group(function () {
 
         Route::post('/importarServiciosProductosExcel', [ProductoController::class, 'importarServiciosProductosExcel'])->name('producto.importarServiciosProductosExcel');
     });
+    //SOLICITUDES DE PRODUCTOS
+    Route::prefix('/solicitudes-repuestos')->group(function () {
+        Route::get('/listado', [SolicitudRepuestoController::class, 'listado'])->name('solicitudRepuesto.listado');
+        Route::post('/ajaxListado', [SolicitudRepuestoController::class, 'ajaxListado'])->name('solicitudRepuesto.ajaxListado');
+        Route::post('/ajaxObtenerSolicitud', [SolicitudRepuestoController::class, 'ajaxObtenerSolicitud'])->name('solicitudRepuesto.ajaxObtenerSolicitud');
+        Route::post('/guardarAprobacion', [SolicitudRepuestoController::class, 'guardarAprobacion'])->name('solicitudRepuesto.guardarAprobacion');
+    });
 
     //PAGO
     Route::prefix('/pago')->group(function () {
@@ -210,6 +218,13 @@ Route::middleware('auth')->group(function () {
         Route::post('/obtenerActaDevolucionRepuesto', [GrupoClienteController::class, 'obtenerActaDevolucionRepuesto'])->name('grupoCliente.obtenerActaDevolucionRepuesto');
         Route::get('/descargarPdfActaDevolucionRepuesto/{id}', [GrupoClienteController::class, 'descargarPdfActaDevolucionRepuesto'])->name('grupoCliente.descargarPdfActaDevolucionRepuesto');
         Route::get('/descargarExcelActaDevolucionRepuesto/{id}', [GrupoClienteController::class, 'descargarExcelActaDevolucionRepuesto'])->name('grupoCliente.descargarExcelActaDevolucionRepuesto');
+
+        // Formulario 12 - Solicitud de Repuestos
+        Route::post('/guardarSolicitudRepuesto', [GrupoClienteController::class, 'guardarSolicitudRepuesto'])->name('grupoCliente.guardarSolicitudRepuesto');
+        Route::post('/obtenerSolicitudRepuesto', [GrupoClienteController::class, 'obtenerSolicitudRepuesto'])->name('grupoCliente.obtenerSolicitudRepuesto');
+        Route::get('/descargarPdfSolicitudRepuesto/{id}', [GrupoClienteController::class, 'descargarPdfSolicitudRepuesto'])->name('grupoCliente.descargarPdfSolicitudRepuesto');
+        Route::get('/descargarExcelSolicitudRepuesto/{id}', [GrupoClienteController::class, 'descargarExcelSolicitudRepuesto'])->name('grupoCliente.descargarExcelSolicitudRepuesto');
+        Route::get('/buscarProducto', [GrupoClienteController::class, 'buscarProducto'])->name('grupoCliente.buscarProducto');
 
         Route::get('/descargarPdfOrdenRecepcion/{id}', [GrupoClienteController::class, 'descargarPdfOrdenRecepcion'])->name('grupoCliente.descargarPdfOrdenRecepcion');
         Route::get('/descargarExcelOrdenRecepcion/{id}', [GrupoClienteController::class, 'descargarExcelOrdenRecepcion'])->name('grupoCliente.descargarExcelOrdenRecepcion');
