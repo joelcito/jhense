@@ -10,7 +10,7 @@
 
 @section('content')
 
-<!-- inicio modal nuevo perfil -->
+<!-- inicio modal nuevo automovil -->
 <div id="modalAuto" class="modal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content">
@@ -23,7 +23,7 @@
                 <div class="modal-body">
                     <input type="hidden" name="id" id="id">
                     <div class="row">
-                        <div class="col-md-12">
+                        <div class="col-md-9">
                             <div class="form-group">
                                 <label class="control-label">Cliente</label>
                                 <span class="text-danger">
@@ -38,6 +38,10 @@
                                 </select>
                                 <div class="text-danger error-message" id="error-cliente_id"></div>
                             </div>
+                        </div>
+                        <div class="col-md-3">
+                            <br>
+                            <button type="button" class="btn btn-primary btn-sm" onclick="nuevoCliente()">Nuevo Cliente</button>
                         </div>
                         <div class="col-md-4">
                             <div class="form-group">
@@ -109,9 +113,111 @@
         </div>
     </div>
 </div>
-<!-- fin modal nuevo perfil -->
+<!-- fin modal nuevo automovil -->
 
-<!-- fin modal editar perfil -->
+<!-- inicio modal nuevo cliente -->
+<div id="modalCliente" class="modal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="myModalLabel">FORMULARIO CLIENTE</h4>
+                <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+            </div>
+            <form id="formularioCliente">
+                @csrf
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label class="control-label">Nombres</label>
+                                <span class="text-danger">
+                                    <i class="mr-2 mdi mdi-alert-circle"></i>
+                                </span>
+                                <input name="nombres" type="text" id="nombres" maxlength="30" class="form-control" required>
+                                <div class="text-danger error-message" id="error-nombres"></div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label class="control-label">Ap. Paterno</label>
+                                <input name="ap_paterno" type="text" id="ap_paterno" maxlength="30" class="form-control" required>
+                                <div class="text-danger error-message" id="error-ap_paterno"></div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label class="control-label">Ap. Materno</label>
+                                <input name="ap_materno" type="text" id="ap_materno" maxlength="30" class="form-control" required>
+                                <div class="text-danger error-message" id="error-ap_materno"></div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label class="control-label">Cedula</label>
+                                <span class="text-danger">
+                                    <i class="mr-2 mdi mdi-alert-circle"></i>
+                                </span>
+                                <input name="cedula" type="number" id="cedula" class="form-control" required>
+                                <div class="text-danger error-message" id="error-cedula"></div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label class="control-label">Complemento</label>
+                                <input name="complemento" type="text" id="complemento" maxlength="30" class="form-control" required>
+                                <div class="text-danger error-message" id="error-complemento"></div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label class="control-label">Nit</label>
+                                <input name="nit" type="number" id="nit" class="form-control" required>
+                                <div class="text-danger error-message" id="error-nit"></div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label class="control-label">Razon Social</label>
+                                <input name="razon_social" type="text" id="razon_social" maxlength="30" class="form-control" required>
+                                <div class="text-danger error-message" id="error-razon_social"></div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label class="control-label">Correo</label>
+                                <input name="correo" type="text" id="correo" maxlength="30" class="form-control" required>
+                                <div class="text-danger error-message" id="error-correo"></div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label class="control-label">Celular</label>
+                                <input name="numero_celular" type="text" id="numero_celular" maxlength="30" class="form-control" required>
+                                <div class="text-danger error-message" id="error-numero_celular"></div>
+                            </div>
+                        </div>
+                        <div class="col-md-12">
+                            <div class="form-group">
+                                <label class="control-label">Direccion</label>
+                                <span class="text-danger">
+                                    <i class="mr-2 mdi mdi-alert-circle"></i>
+                                </span>
+                                <input name="direccion" type="text" id="direccion" maxlength="100" class="form-control" required>
+                                <div class="text-danger error-message" id="error-direccion"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn waves-effect waves-light btn-block btn-success"
+                        onclick="guardarCliente()">GUARDAR</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<!-- fin modal nuevo cliente -->
+
 <div class="card border-info">
     <div class="card-header bg-info">
         <h4 class="mb-0 text-white">
@@ -305,6 +411,96 @@
             }
         });
 
+    }
+
+    //CLIENTE
+    function nuevoCliente()
+    {
+        limpiarErorres();
+
+        $('#nombres').val('');
+        $('#ap_paterno').val('');
+        $('#ap_materno').val('');
+        $('#cedula').val('');
+        $('#complemento').val('');
+        $('#nit').val('');
+        $('#razon_social').val('');
+        $('#correo').val('');
+        $('#numero_celular').val('');
+        $('#direccion').val('');
+        $('#modalCliente').modal('show');
+    }
+
+    function guardarCliente()
+    {
+        let datos = $('#formularioCliente').serializeArray();
+        datos.push({
+            name: 'sucursal_id',
+            value: sucursal.id
+        });
+        datos.push({
+            name: 'id',
+            value: 0
+        });
+        $.ajax({
+            url: "{{ route('clienteSucursal.guardarCliente') }}",
+            data: datos,
+            type: 'POST',
+            success: function(data) {
+                if(data.estado){
+                    $('#modalCliente').modal('hide')
+                    //ajaxListado();
+                    Swal.fire(
+                        'Excelente!',
+                        'Cliente creado correctamente.',
+                        'success'
+                    );
+                    
+                    const cliente = data.data.cliente;
+                    if(cliente){
+                        let cadena = (cliente.cedula ? cliente.cedula+' - ' : '')+cliente.nombres+' '+(cliente.ap_paterno ? cliente.ap_paterno+' ' : '')+(cliente.ap_materno ? cliente.ap_materno : '')
+                        agregarYSeleccionarCliente(cliente.id, cadena);
+                    }
+                }else{
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'Ocurrió un error inesperado, no se pudo registrar el cliente.',
+                    });
+                }
+            },
+            error: function(xhr) {
+                limpiarErorres();
+
+                if (xhr.status === 422) {
+                    let errors = xhr.responseJSON.errors;
+                    $.each(errors, function(key, messages) {
+                        let input = $('[name="' + key + '"]');
+                        let errorDiv = $('#error-' + key);
+
+                        if (input.length > 0) {
+                            input.addClass('is-invalid'); // Agregar clase de error
+                            errorDiv.html('<span>' + messages[0] + '</span>'); // Mostrar mensaje
+                        }
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'Ocurrió un error inesperado.',
+                    });
+                }
+            }
+        });
+    }
+
+    function agregarYSeleccionarCliente(id, texto) {
+        // Crear nueva opción
+        let nuevaOpcion = new Option(texto, id, true, true);
+
+        // Agregar al select
+        $('#cliente_id').append(nuevaOpcion).trigger('change');
+        $('#cliente_id').val(id).trigger('change');
     }
 
 </script>

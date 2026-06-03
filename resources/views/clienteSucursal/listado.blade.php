@@ -53,7 +53,7 @@
                                 <span class="text-danger">
                                     <i class="mr-2 mdi mdi-alert-circle"></i>
                                 </span>
-                                <input name="cedula" type="text" id="cedula" maxlength="30" class="form-control" required>
+                                <input name="cedula" type="number" id="cedula" class="form-control" required>
                                 <div class="text-danger error-message" id="error-cedula"></div>
                             </div>
                         </div>
@@ -67,7 +67,7 @@
                         <div class="col-md-4">
                             <div class="form-group">
                                 <label class="control-label">Nit</label>
-                                <input name="nit" type="text" id="nit" maxlength="30" class="form-control" required>
+                                <input name="nit" type="number" id="nit" class="form-control" required>
                                 <div class="text-danger error-message" id="error-nit"></div>
                             </div>
                         </div>

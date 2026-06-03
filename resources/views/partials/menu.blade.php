@@ -7,7 +7,7 @@
                 $user = Auth::user();
                 $gruposTotales = \App\Models\Grupo::all();
                 if($user->rol_id == 1){
-                    $misSucursales = \App\Models\Sucursal::all();
+                    $misSucursales = \App\Models\Sucursal::where('id', '>', 1)->get();
                 }else{
                     $misSucursales = \App\Models\Sucursal::where('id', $user->puntoVenta->sucursal_id)->limit(1)->get();
                 }
@@ -111,41 +111,44 @@
                     </ul>
                 </li>
 
-                {{-- TALLERES --}}
-                <li class="nav-small-cap"><i class="mdi mdi-dots-horizontal"></i> <span class="hide-menu">TALLERES</span></li>
-                @foreach ($misSucursales as $ms)
-                    <li class="sidebar-item">
-                        <a class="sidebar-link has-arrow waves-effect waves-dark" aria-expanded="false">
-                            <i data-feather="home" class="feather-icon"></i><span class="hide-menu"> {{ $ms->nombre }}</span>
-                        </a>
-                        <ul aria-expanded="false" class="collapse  first-level">
-                            <li class="sidebar-item">
-                                <a href="{{ route('clienteSucursal.listado', ['sucursal_id' => $ms->id]) }}" class="sidebar-link">
-                                    <i data-feather="home" class="feather-icon"></i><span class="hide-menu"> Clientes </span>
-                                </a>
-                            </li>
-                            <li class="sidebar-item">
-                                <a href="{{ route('autoSucursal.listado', ['sucursal_id' => $ms->id]) }}" class="sidebar-link">
-                                    <i data-feather="home" class="feather-icon"></i><span class="hide-menu"> Automoviles </span>
-                                </a>
-                            </li>
-                            @foreach ( $gruposTotales as $grupo)
+                @if ($user->puntoVenta->sucursal_id && $user->puntoVenta->sucursal_id > 1)
+                    {{-- TALLERES --}}
+                    <li class="nav-small-cap"><i class="mdi mdi-dots-horizontal"></i> <span class="hide-menu">TALLERES</span></li>
+                    @foreach ($misSucursales as $ms)
+                        <li class="sidebar-item">
+                            <a class="sidebar-link has-arrow waves-effect waves-dark" aria-expanded="false">
+                                <i data-feather="home" class="feather-icon"></i><span class="hide-menu"> {{ $ms->nombre }}</span>
+                            </a>
+                            <ul aria-expanded="false" class="collapse  first-level">
                                 <li class="sidebar-item">
-                                    <a class="sidebar-link has-arrow waves-effect waves-dark" aria-expanded="false">
-                                        <i data-feather="home" class="feather-icon"></i><span class="hide-menu"> {{ $grupo->nombre }}</span>
+                                    <a href="{{ route('clienteSucursal.listado', ['sucursal_id' => $ms->id]) }}" class="sidebar-link">
+                                        <i data-feather="home" class="feather-icon"></i><span class="hide-menu"> Clientes </span>
                                     </a>
-                                    <ul aria-expanded="false" class="collapse  first-level">
-                                        <li class="sidebar-item">
-                                            <a href="{{ route('grupoCliente.listado', ['sucursal_id' => $ms->id, 'grupo_id' => $grupo->id]) }}" class="sidebar-link">
-                                                <i data-feather="home" class="feather-icon"></i><span class="hide-menu"> Clientes </span>
-                                            </a>
-                                        </li>
-                                    </ul>
                                 </li>
-                            @endforeach
-                        </ul>
-                    </li>
-                @endforeach
+                                <li class="sidebar-item">
+                                    <a href="{{ route('autoSucursal.listado', ['sucursal_id' => $ms->id]) }}" class="sidebar-link">
+                                        <i data-feather="home" class="feather-icon"></i><span class="hide-menu"> Automoviles </span>
+                                    </a>
+                                </li>
+                                @foreach ( $gruposTotales as $grupo)
+                                    <li class="sidebar-item">
+                                        <a class="sidebar-link has-arrow waves-effect waves-dark" aria-expanded="false">
+                                            <i data-feather="home" class="feather-icon"></i><span class="hide-menu"> {{ $grupo->nombre }}</span>
+                                        </a>
+                                        <ul aria-expanded="false" class="collapse  first-level">
+                                            <li class="sidebar-item">
+                                                <a href="{{ route('grupoCliente.listado', ['sucursal_id' => $ms->id, 'grupo_id' => $grupo->id]) }}" class="sidebar-link">
+                                                    <i data-feather="home" class="feather-icon"></i><span class="hide-menu"> Clientes </span>
+                                                </a>
+                                            </li>
+                                        </ul>
+                                    </li>
+                                @endforeach
+                            </ul>
+                        </li>
+                    @endforeach
+                @endif
+                
                 <li class="nav-devider"></li>
             </ul>
         </nav>

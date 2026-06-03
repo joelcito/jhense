@@ -28,19 +28,19 @@
     }
 @endphp
 
-<table style="width: 100%; margin-bottom: 20px; border-collapse: collapse; border: none !important;">
+<table style="width: 100%; margin-bottom: 20px; border-collapse: collapse;">
     <tr>
-        <td style="width: 33%; text-align: left; vertical-align: middle; border: none !important;">
+        <td style="width: 33%; text-align: left; vertical-align: middle;">
             @if($sucursalLogoSrc)
                 <img src="{{ $sucursalLogoSrc }}" style="max-width: 150px; max-height: 80px;">
             @else
                 <h2 style="margin: 0; color: #333; font-size: 24px; font-weight: bold;">JHENSE</h2>
             @endif
         </td>
-        <td style="width: 34%; text-align: center; vertical-align: middle; border: none !important;">
+        <td style="width: 34%; text-align: center; vertical-align: middle;">
             <div class="header" style="margin-bottom: 0; font-size: 16px; font-weight: bold; text-decoration: underline;">{{ $titulo }}</div>
         </td>
-        <td style="width: 33%; text-align: right; vertical-align: middle; border: none !important;">
+        <td style="width: 33%; text-align: right; vertical-align: middle;">
             @if($logoJhenseSrc)
                 <img src="{{ $logoJhenseSrc }}" style="max-width: 150px; max-height: 80px;">
             @endif
